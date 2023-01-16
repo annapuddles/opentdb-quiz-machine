@@ -1,98 +1,98 @@
-// URL of the Open Trivia Database API
+/* URL of the Open Trivia Database API */
 string opentdb_api = "https://opentdb.com/api.php";
 
-// URL of the list of categories in the Open Trivia Database API
+/* URL of the list of categories in the Open Trivia Database API */
 string opentdb_api_categories = "https://opentdb.com/api_category.php";
 
-// Special payout where the machine will give out objects from its inventory instead of money
+/* Special payout where the machine will give out objects from its inventory instead of money */
 integer PAYOUT_PRIZE = -1;
 
-// The encoding we want the API to use
+/* The encoding we want the API to use */
 string encoding = "url3986";
 
-// The delay in seconds before a question is asked after announcing it
+/* The delay in seconds before a question is asked after announcing it */
 float question_delay = 10;
 
-// The time in seconds players have to answer a question
+/* The time in seconds players have to answer a question */
 float answer_timeout = 30;
 
-// The time in seconds before the quiz setup dialogs will timeout
+/* The time in seconds before the quiz setup dialogs will timeout */
 float setup_timeout = 300;
 
-// The delay before the quiz starts after announcing it
+/* The delay before the quiz starts after announcing it */
 float quiz_start_time = 20;
 
-// The delay before the machine resets after a quiz ends
+/* The delay before the machine resets after a quiz ends */
 float quiz_end_time = 10;
 
-// The maximum number of questions that can be selected
+/* The maximum number of questions that can be selected */
 integer max_questions = 50;
 
-// The channel used for dialogs
+/* The channel used for dialogs */
 integer dialog_channel;
 
-// Stores the text for the total questions choice dialog
+/* Stores the text for the total questions choice dialog */
 string total_questions_text;
 
-// Stores the list of buttons for the total questions choice dialog
+/* Stores the list of buttons for the total questions choice dialog */
 list total_questions_buttons;
 
-// Stores the list of categories as JSON objects
+/* Stores the list of categories as JSON objects */
 list categories;
 
-// Stores which category the category choice dialog is on in order to have multiple pages
+/* Stores which category the category choice dialog is on in order to have multiple pages */
 integer categories_index;
 
-// The person who initiated the quiz
+/* The person who initiated the quiz */
 key quiz_starter;
 
-// The amount the quiz starter paid and how much is leftover
+/* The amount the quiz starter paid and how much is leftover */
 integer amount_paid;
 
-// The selected total number of questions
+/* The selected total number of questions */
 integer total_questions;
 
-// The selected category
+/* The selected category */
 string category;
 
-// The selected difficulty
+/* The selected difficulty */
 string difficulty;
 
-// The selected payout
+/* The selected payout */
 integer payout;
 
-// The list of questions return by the API as JSON objects
+/* The list of questions return by the API as JSON objects */
 list questions;
 
-// The current question the quiz is on
+/* The current question the quiz is on */
 integer question_number;
 
-// The current correct answer for the current question
+/* The current correct answer for the current question */
 string correct_answer;
 
-// A list of players that have already guessed incorrectly on the current question
+/* A list of players that have already guessed incorrectly on the current question */
 list incorrect_guessers;
 
-// The number of questions each player has gotten correct
+/* The number of questions each player has gotten correct */
 list scores;
 
-// The listener ID for some dialogs
+/* The listener ID for some dialogs */
 integer listener;
 
-// Set the overhead text of the machine
+/* Set the overhead text of the machine */
 set_text(string text)
 {
     llSetText(text, <1, 1, 1>, 1);
 }
 
-// Display a message both overhead and in nearby chat
+/* Display a message both overhead and in nearby chat */
 announce(string text)
 {
     set_text(text);
     llSay(0, "\n" + text);
 }
 
-// Give the quiz starter their remaining money back if the quiz is cancelled
+/* Give the quiz starter their remaining money back if the quiz is cancelled */
 issue_refund(key id, integer amount)
 {
     llRegionSayTo(id, 0, "You will be refunded the leftover L$" + (string) amount + " that you paid.");
@@ -100,7 +100,7 @@ issue_refund(key id, integer amount)
     llGiveMoney(id, amount);
 }
 
-// Increase the score of a player, or add them to the score list if this is their first correct answer
+/* Increase the score of a player, or add them to the score list if this is their first correct answer */
 increase_score(key id)
 {
     integer index = llListFindList(scores, [id]);
@@ -117,7 +117,7 @@ increase_score(key id)
     }
 }
 
-// Display a page of the category choice dialog
+/* Display a page of the category choice dialog */
 open_category_dialog()
 {
     string text = "Choose a category: ";
@@ -139,13 +139,13 @@ open_category_dialog()
     llDialog(quiz_starter, text, buttons, dialog_channel);
 }
 
-// Make an HTTP request with the maximum allowed response body length
+/* Make an HTTP request with the maximum allowed response body length */
 make_http_request(string url)
 {
     llHTTPRequest(url, [HTTP_BODY_MAXLENGTH, 16384], "");
 }
 
-// Determine if the machine contains enough prizes for the selected number of questions
+/* Determine if the machine contains enough prizes for the selected number of questions */
 integer enough_prizes()
 {
     integer objects = llGetInventoryNumber(INVENTORY_OBJECT);
@@ -173,7 +173,7 @@ integer enough_prizes()
     return objects >= total_questions;
 }
 
-// In the default state, request the necessary permissions from the owner
+/* In the default state, request the necessary permissions from the owner */
 default
 {
     state_entry()
@@ -210,12 +210,12 @@ default
     }
 }
 
-// The machine is ready to start a quiz
+/* The machine is ready to start a quiz */
 state ready
 {
     state_entry()
     {
-        // Clear previous quiz settings
+        /* Clear previous quiz settings */
         amount_paid = 0;   
         quiz_starter = NULL_KEY;
         category = "";
@@ -224,16 +224,16 @@ state ready
         correct_answer = "";
         scores = [];
         
-        // Set the buttons that appear in the Pay dialog
+        /* Set the buttons that appear in the Pay dialog */
         llSetPayPrice(PAY_DEFAULT, [10, 50, 100, 500]);
         
-        // Make it so clicking the machine initiates the Pay event
+        /* Make it so clicking the machine initiates the Pay event */
         llSetClickAction(CLICK_ACTION_PAY);
         
         set_text("Pay me to start a quiz!");
     }
     
-    // The owner of the machine can start a quiz without paying, and has some additional options
+    /* The owner of the machine can start a quiz without paying, and has some additional options */
     touch_end(integer detected)
     {
         key toucher = llDetectedKey(0);
@@ -249,7 +249,7 @@ state ready
         state choose_total_questions;
     }
     
-    // Begin the quiz setup when someone pays the machine
+    /* Begin the quiz setup when someone pays the machine */
     money(key id, integer amount)
     {
         amount_paid = amount;
@@ -260,7 +260,7 @@ state ready
     }
 }
 
-// Get the number of questions for the quiz from the quiz starter
+/* Get the number of questions for the quiz from the quiz starter */
 state choose_total_questions
 {
     state_entry()
@@ -272,12 +272,12 @@ state choose_total_questions
         total_questions_text = "How many questions?";
         total_questions_buttons = [];
         
-        // If the owner initiated this, just display a standard set of question numbers
+        /* If the owner initiated this, just display a standard set of question numbers */
         if (amount_paid == 0)
         {
             total_questions_buttons = ["1", "5", "10", "15", "20", "25", "30", "35", "40", "45", "50"];
         }
-        // If someone paid the machine, then create a list of possible numbers of questions based on factors of the amount they paid
+        /* If someone paid the machine, then create a list of possible numbers of questions based on factors of the amount they paid */
         else
         {
             integer factor;
@@ -302,13 +302,13 @@ state choose_total_questions
             }            
         }
         
-        // Display the possible numbers of questions in a dialog and let the quiz starter choose
+        /* Display the possible numbers of questions in a dialog and let the quiz starter choose */
         llListen(dialog_channel, "", quiz_starter, "");
         llDialog(quiz_starter, total_questions_text, ["CANCEL"] + total_questions_buttons, dialog_channel);
         llSetTimerEvent(setup_timeout);
     }
     
-    // Re-display the dialog if the machine is touched, in case it is accidentally closed
+    /* Re-display the dialog if the machine is touched, in case it is accidentally closed */
     touch_end(integer detected)
     {
         if (llDetectedKey(0) != quiz_starter) return;
@@ -316,7 +316,7 @@ state choose_total_questions
         llDialog(quiz_starter, total_questions_text, ["CANCEL"] + total_questions_buttons, dialog_channel);
     }
     
-    // Handle the response from the quiz starter
+    /* Handle the response from the quiz starter */
     listen(integer channel, string name, key id, string message)
     {
         if (message == "CANCEL")
@@ -349,7 +349,7 @@ state choose_total_questions
         state choose_category;
     }
     
-    // Timeout the quiz setup if the quiz starter takes too long
+    /* Timeout the quiz setup if the quiz starter takes too long */
     timer()
     {
         llSetTimerEvent(0);
@@ -357,7 +357,7 @@ state choose_total_questions
         state cancel_quiz;
     }
     
-    // Reset the dialog variables to free up memory
+    /* Reset the dialog variables to free up memory */
     state_exit()
     {
         total_questions_text = "";
@@ -365,7 +365,7 @@ state choose_total_questions
     }
 }
 
-// Get the category of questions that will be asked in the quiz
+/* Get the category of questions that will be asked in the quiz */
 state choose_category
 {
     state_entry()
@@ -416,7 +416,7 @@ state choose_category
     }
 }
 
-// Get the difficulty of the questions that will be asked
+/* Get the difficulty of the questions that will be asked */
 state choose_difficulty
 {
     state_entry()
@@ -457,7 +457,7 @@ state choose_difficulty
     }
 }
 
-// If setup is initiated by the owner, get the payout for each question (otherwise, it is based on the amount paid to the machine)
+/* If setup is initiated by the owner, get the payout for each question (otherwise, it is based on the amount paid to the machine) */
 state choose_payout
 {
     state_entry()
@@ -502,7 +502,7 @@ state choose_payout
     }
 }
 
-// Fetch the questions from the API and start the quiz
+/* Fetch the questions from the API and start the quiz */
 state begin_quiz
 {
     state_entry()
@@ -610,7 +610,7 @@ state fetch_question
     }
 }
 
-// Display the question to the players
+/* Display the question to the players */
 state ask_question
 {
     state_entry()
@@ -697,7 +697,7 @@ state ask_question
     }
 }
 
-// Listen for answers from players and determine if they are correct or incorrect
+/* Listen for answers from players and determine if they are correct or incorrect */
 state wait_for_answer
 {
     state_entry()
@@ -820,7 +820,7 @@ state wait_for_answer
     }
 }
 
-// Finish the quiz normally
+/* Finish the quiz normally */
 state end_quiz
 {
     state_entry()
@@ -868,7 +868,7 @@ state end_quiz
     }
 }
 
-// End the quiz prematurely, and issue a refund to the quiz starter if necessary
+/* End the quiz prematurely, and issue a refund to the quiz starter if necessary */
 state cancel_quiz
 {
     state_entry()
