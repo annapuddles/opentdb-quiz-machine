@@ -29,8 +29,7 @@ float quiz_end_time = 10;
 integer max_questions = 50;
 
 // The channel used for dialogs
-integer dialog_channel = 12345;
-
+integer dialog_channel;
 
 // Stores the text for the total questions choice dialog
 string total_questions_text;
@@ -66,7 +65,7 @@ integer payout;
 list questions;
 
 // The current question the quiz is on
-integer question_index;
+integer question_number;
 
 // The current correct answer for the current question
 string correct_answer;
@@ -180,6 +179,9 @@ default
     state_entry()
     {
         set_text("Setting up... (touch to set permissions)");
+        
+        /* Get a unique channel number based on the object's key. */
+        dialog_channel = 0x80000000 | (integer)("0x"+(string)llGetKey());
                         
         llSetClickAction(CLICK_ACTION_TOUCH);
         
@@ -517,35 +519,8 @@ state begin_quiz
         }
         
         llPreloadSound("begin");
-
-        set_text("Fetching questions...");
         
-        string url = opentdb_api + "?encode=" + encoding + "&amount=" + (string) total_questions;
-        
-        if (category != "random")
-        {
-            url += "&category=" + category;
-        }
-        
-        if (difficulty != "random")
-        {
-            url += "&difficulty=" + difficulty;
-        }
-        
-        make_http_request(url);
-    }
-    
-    http_response(key request_id, integer status, list metadata, string body)
-    {        
-        questions = llJson2List(llJsonGetValue(body, ["results"]));
-        
-        if (llGetListLength(questions) != total_questions)
-        {
-            llSay(0, "An error occurred while fetching the questions.");
-            state cancel_quiz;
-        }
-        
-        question_index = 0;
+        question_number = 1;
                 
         string text = "A quiz of " + (string) total_questions + " questions has started!\n\nTo play, say the letter corresponding to the correct answer in nearby chat.\n\nEach person may only answer once per question!";
                 
@@ -563,15 +538,6 @@ state begin_quiz
         announce(text);
                 
         llSetTimerEvent(quiz_start_time);
-    }
-    
-    timer()
-    {
-        llSetTimerEvent(0);
-        
-        scores = [];
-        
-        state ask_question;
     }
     
     touch_end(integer detected)
@@ -598,6 +564,50 @@ state begin_quiz
             state cancel_quiz;
         }
     }
+    
+    timer()
+    {
+        llSetTimerEvent(0);
+        
+        scores = [];
+        
+        state fetch_question;
+    }
+}
+
+state fetch_question
+{
+    state_entry()
+    {
+        set_text("Fetching question...");
+        
+        string url = opentdb_api + "?encode=" + encoding + "&amount=1";
+        
+        if (category != "random")
+        {
+            url += "&category=" + category;
+        }
+        
+        if (difficulty != "random")
+        {
+            url += "&difficulty=" + difficulty;
+        }
+        
+        make_http_request(url);
+    }
+    
+    http_response(key request_id, integer status, list metadata, string body)
+    {        
+        questions = llJson2List(llJsonGetValue(body, ["results"]));
+        
+        if (llGetListLength(questions) < 1)
+        {
+            llSay(0, "An error occurred while fetching the question.");
+            state cancel_quiz;
+        }
+        
+        state ask_question;
+    }
 }
 
 // Display the question to the players
@@ -605,11 +615,11 @@ state ask_question
 {
     state_entry()
     {                
-        if (question_index == 0)
+        if (question_number == 1)
         {
             announce("Here comes the first question...");
         }
-        else if (question_index == llGetListLength(questions) - 1)
+        else if (question_number == total_questions)
         {
             announce("Here comes the last question...");
         }
@@ -652,7 +662,7 @@ state ask_question
     {
         llSetTimerEvent(0);
         
-        string question_data = llList2String(questions, question_index);
+        string question_data = llList2String(questions, 0);
         
         string question = llUnescapeURL(llJsonGetValue(question_data, ["question"]));
         
@@ -662,7 +672,7 @@ state ask_question
         
         list answers = llListRandomize(incorrect_answers + correct_answer, 1);
         
-        string text = (string) (question_index + 1) + ") " + question;
+        string text = (string) question_number + ") " + question;
         
         integer i;
         for (i = 0; i < llGetListLength(answers); ++i)
@@ -758,11 +768,11 @@ state wait_for_answer
             
             increase_score(id);
             
-            ++question_index;
+            ++question_number;
             
-            if (question_index < llGetListLength(questions))
+            if (question_number <= total_questions)
             {
-                state ask_question;
+                state fetch_question;
             }
             else
             {
@@ -790,13 +800,13 @@ state wait_for_answer
             amount_paid -= payout;
         }
         
-        ++question_index;
+        ++question_number;
         
-        if (question_index < llGetListLength(questions))
+        if (question_number <= total_questions)
         {
             llPlaySound("fail", 1);
             
-            state ask_question;
+            state fetch_question;
         }
         else
         {
