@@ -377,10 +377,18 @@ state choose_category
     
     http_response(key request_id, integer status, list metadata, string body)
     {
-        categories = llJson2List(llJsonGetValue(body, ["trivia_categories"]));
+        if (llJsonValueType(body, ["trivia_categories"]) == JSON_ARRAY)
+        {
+            categories = llJson2List(llJsonGetValue(body, ["trivia_categories"]));
         
-        categories_index = 0;
-        open_category_dialog();
+            categories_index = 0;
+            open_category_dialog();
+        }
+        else
+        {
+            llSay(0, "An error occurred fetching the categories.");
+            state cancel_quiz;
+        }
     }
     
     listen(integer channel, string name, key id, string message)
