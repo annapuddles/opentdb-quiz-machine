@@ -784,6 +784,8 @@ state wait_for_answer
             }
             else
             {
+                llPreloadSound("end");
+                llSleep(1);
                 state end_quiz;
             }
         }
@@ -818,6 +820,8 @@ state wait_for_answer
         }
         else
         {
+            llPreloadSound("end");
+            
             state end_quiz;
         }
     }
