@@ -258,6 +258,15 @@ state ready
         
         state choose_total_questions;
     }
+    
+    /* Reset script on owner transfer. */
+    changed(integer change)
+    {
+        if (change & CHANGED_OWNER)
+        {
+            llResetScript();
+        }
+    }
 }
 
 /* Get the number of questions for the quiz from the quiz starter */
@@ -363,6 +372,15 @@ state choose_total_questions
         total_questions_text = "";
         total_questions_buttons = [];
     }
+    
+    /* Reset script on owner transfer. */
+    changed(integer change)
+    {
+        if (change & CHANGED_OWNER)
+        {
+            llResetScript();
+        }
+    }
 }
 
 /* Get the category of questions that will be asked in the quiz */
@@ -422,6 +440,15 @@ state choose_category
     {
         categories = [];
     }
+    
+    /* Reset script on owner transfer. */
+    changed(integer change)
+    {
+        if (change & CHANGED_OWNER)
+        {
+            llResetScript();
+        }
+    }
 }
 
 /* Get the difficulty of the questions that will be asked */
@@ -462,6 +489,15 @@ state choose_difficulty
         llSetTimerEvent(0);
         
         state cancel_quiz;
+    }
+    
+    /* Reset script on owner transfer. */
+    changed(integer change)
+    {
+        if (change & CHANGED_OWNER)
+        {
+            llResetScript();
+        }
     }
 }
 
@@ -507,6 +543,15 @@ state choose_payout
         llSetTimerEvent(0);
         
         state cancel_quiz;
+    }
+    
+    /* Reset script on owner transfer. */
+    changed(integer change)
+    {
+        if (change & CHANGED_OWNER)
+        {
+            llResetScript();
+        }
     }
 }
 
@@ -581,6 +626,15 @@ state begin_quiz
         
         state fetch_question;
     }
+    
+    /* Reset script on owner transfer. */
+    changed(integer change)
+    {
+        if (change & CHANGED_OWNER)
+        {
+            llResetScript();
+        }
+    }
 }
 
 state fetch_question
@@ -615,6 +669,15 @@ state fetch_question
         }
         
         state ask_question;
+    }
+    
+    /* Reset script on owner transfer. */
+    changed(integer change)
+    {
+        if (change & CHANGED_OWNER)
+        {
+            llResetScript();
+        }
     }
 }
 
@@ -702,6 +765,15 @@ state ask_question
         announce(text);
         
         state wait_for_answer;
+    }
+    
+    /* Reset script on owner transfer. */
+    changed(integer change)
+    {
+        if (change & CHANGED_OWNER)
+        {
+            llResetScript();
+        }
     }
 }
 
@@ -830,6 +902,15 @@ state wait_for_answer
     {
         incorrect_guessers = [];
     }
+    
+    /* Reset script on owner transfer. */
+    changed(integer change)
+    {
+        if (change & CHANGED_OWNER)
+        {
+            llResetScript();
+        }
+    }
 }
 
 /* Finish the quiz normally */
@@ -878,6 +959,15 @@ state end_quiz
 
         state ready;
     }
+    
+    /* Reset script on owner transfer. */
+    changed(integer change)
+    {
+        if (change & CHANGED_OWNER)
+        {
+            llResetScript();
+        }
+    }
 }
 
 /* End the quiz prematurely, and issue a refund to the quiz starter if necessary */
@@ -902,5 +992,14 @@ state cancel_quiz
         llSetTimerEvent(0);
 
         state ready;
+    }
+    
+    /* Reset script on owner transfer. */
+    changed(integer change)
+    {
+        if (change & CHANGED_OWNER)
+        {
+            llResetScript();
+        }
     }
 }
