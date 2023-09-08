@@ -1,3 +1,5 @@
+/* Open Trivia Database Quiz Machine v1.1.0 */
+
 /* URL of the Open Trivia Database API */
 string opentdb_api = "https://opentdb.com/api.php";
 
@@ -27,6 +29,9 @@ float quiz_end_time = 10;
 
 /* The maximum number of questions that can be selected */
 integer max_questions = 50;
+
+/* Whether the machine allows free-to-play mode. */
+integer free_to_play = FALSE;
 
 /* The channel used for dialogs */
 integer dialog_channel;
@@ -230,23 +235,34 @@ state ready
         /* Make it so clicking the machine initiates the Pay event */
         llSetClickAction(CLICK_ACTION_PAY);
         
-        set_text("Pay me to start a quiz!");
+        if (free_to_play)
+        {
+            set_text("Touch or pay me to start a quiz!");
+        }
+        else
+        {
+            set_text("Pay me to start a quiz!");
+        }
     }
     
-    /* The owner of the machine can start a quiz without paying, and has some additional options */
+    /* The owner of the machine can start a quiz without paying, and has some additional options.
+    
+       Additionally, if the machine is set in free-to-play mode, anyone can start a quiz without paying,
+       though they do not have access to all the same options as the owner (such as setting the payout amount). */
     touch_end(integer detected)
     {
         key toucher = llDetectedKey(0);
         
-        if (toucher != llGetOwner())
+        if (free_to_play || toucher == llGetOwner())
+        {
+            amount_paid = 0;
+            quiz_starter = toucher;
+            state choose_total_questions;
+        }
+        else
         {
             llRegionSayTo(toucher, 0, "Sorry, that is restricted to the owner.");
-            return;
         }
-        
-        quiz_starter = toucher;
-                
-        state choose_total_questions;
     }
     
     /* Begin the quiz setup when someone pays the machine */
@@ -476,7 +492,15 @@ state choose_difficulty
         
         if (amount_paid == 0)
         {
-            state choose_payout;
+            if (quiz_starter == llGetOwner())
+            {
+                state choose_payout;
+            }
+            else
+            {
+                payout = 0;
+                state begin_quiz;
+            }
         }
         else
         {
