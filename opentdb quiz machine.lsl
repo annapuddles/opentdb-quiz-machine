@@ -1,4 +1,4 @@
-/* Open Trivia Database Quiz Machine v1.1.0 */
+/* Open Trivia Database Quiz Machine v1.2.0 */
 
 /* URL of the Open Trivia Database API */
 string opentdb_api = "https://opentdb.com/api.php";
@@ -233,7 +233,14 @@ state ready
         llSetPayPrice(PAY_DEFAULT, [10, 50, 100, 500]);
         
         /* Make it so clicking the machine initiates the Pay event */
-        llSetClickAction(CLICK_ACTION_PAY);
+        if (free_to_play)
+        {
+            llSetClickAction(CLICK_ACTION_TOUCH);
+        }
+        else
+        {
+            llSetClickAction(CLICK_ACTION_PAY);
+        }
         
         if (free_to_play)
         {
@@ -290,7 +297,7 @@ state choose_total_questions
 {
     state_entry()
     {
-        set_text(llGetUsername(quiz_starter) + " is starting a quiz...");
+        announce(llGetUsername(quiz_starter) + " is starting a quiz...");
         
         llSetClickAction(CLICK_ACTION_NONE);
         
