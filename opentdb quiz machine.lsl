@@ -3,39 +3,41 @@
 /** CONFIGURATION **/
 
 /* URL of the Open Trivia Database API */
-string OPENTDB_API = "https://opentdb.com/api.php";
+string opentdb_api = "https://opentdb.com/api.php";
 
 /* URL of the list of categories in the Open Trivia Database API */
-string OPENTDB_API_CATEGORIES = "https://opentdb.com/api_category.php";
+string opentdb_api_categories = "https://opentdb.com/api_category.php";
 
 /* The encoding we want the API to use */
-string OPENTDB_API_ENCODING = "url3986";
+string opentdb_api_encoding = "url3986";
 
 /* The delay in seconds before a question is asked after announcing it */
-float QUESTION_DELAY = 10;
+float question_delay = 10;
 
 /* The time in seconds players have to answer a question */
-float ANSWER_TIMEOUT = 30;
+float answer_timeout = 30;
 
 /* The time in seconds before the quiz setup dialogs will timeout */
-float SETUP_TIMEOUT = 300;
+float setup_timeout = 300;
 
 /* The delay before the quiz starts after announcing it */
-float QUIZ_START_TIME = 20;
+float quiz_start_time = 20;
 
 /* The delay before the machine resets after a quiz ends */
-float QUIZ_END_TIME = 10;
+float quiz_end_time = 10;
 
 /* The maximum number of questions that can be selected */
-integer MAX_QUESTIONS = 50;
+integer max_questions = 50;
 
-/* Whether the machine allows free-to-play mode. */
-integer FREE_TO_PLAY = FALSE;
+/* The play mode of the machine:
+ *
+ * 0: Locked: Only the owner may start a quiz.
+ * 1: Pay-to-play: Anyone may pay to start a quiz, but only the owner can start a quiz without paying.
+ * 2: Free-to-play: Anyone can start a quiz without paying.
+ */
+integer play_mode = 1;
 
 /** END OF CONFIGURATION **/
-
-/* Special payout where the machine will give out objects from its inventory instead of money */
-integer PAYOUT_PRIZE = -1;
 
 /* The channel used for dialogs */
 integer dialog_channel;
@@ -151,6 +153,8 @@ default
 {
     state_entry()
     {
+        llOwnerSay("Free memory: " + (string) llGetFreeMemory());
+        
         llSetText("Setting up... (touch to set permissions)", <1, 1, 1>, 1);
         
         /* Get a unique channel number based on the object's key. */
@@ -200,25 +204,36 @@ state ready
         notecard_lines = [];
                         
         /* Set the buttons that appear in the Pay dialog */
-        llSetPayPrice(PAY_DEFAULT, [10, 50, 100, 500]);
-        
-        /* Make it so clicking the machine initiates the Pay event */
-        if (FREE_TO_PLAY)
+        if (play_mode == 0)
         {
-            llSetClickAction(CLICK_ACTION_TOUCH);
+            llSetPayPrice(PAY_HIDE, [PAY_HIDE, PAY_HIDE, PAY_HIDE, PAY_HIDE]);
         }
         else
+        {
+            llSetPayPrice(PAY_DEFAULT, [10, 50, 100, 500]);
+        }
+        
+        /* Make it so clicking the machine initiates the Pay event */
+        if (play_mode == 1)
         {
             llSetClickAction(CLICK_ACTION_PAY);
         }
-        
-        if (FREE_TO_PLAY)
+        else
         {
-            llSetText("Touch or pay me to start a quiz!", <1, 1, 1>, 1);
+            llSetClickAction(CLICK_ACTION_TOUCH);
+        }
+        
+        if (play_mode == 0)
+        {
+            llSetText("", <0, 0, 0>, 0);
+        }
+        else if (play_mode == 1)
+        {
+            llSetText("Pay me to start a quiz!", <1, 1, 1>, 1);
         }
         else
         {
-            llSetText("Pay me to start a quiz!", <1, 1, 1>, 1);
+            llSetText("Touch or pay me to start a quiz!", <1, 1, 1>, 1);
         }
     }
     
@@ -230,7 +245,7 @@ state ready
     {
         key toucher = llDetectedKey(0);
         
-        if (FREE_TO_PLAY || toucher == llGetOwner())
+        if (play_mode == 2 || toucher == llGetOwner())
         {
             amount_paid = 0;
             quiz_starter = toucher;
@@ -268,11 +283,12 @@ state choose_category
     state_entry()
     {
         announce(llGetUsername(quiz_starter) + " is starting a quiz...");
+        llRegionSayTo(quiz_starter, 0, "If you close out of a dialog during setup, touch the quiz machine again to re-open it.");
         llSetClickAction(CLICK_ACTION_NONE);
 
         llListen(dialog_channel, "", quiz_starter, "");
-        llHTTPRequest(OPENTDB_API_CATEGORIES, [], "");
-        llSetTimerEvent(SETUP_TIMEOUT);
+        llHTTPRequest(opentdb_api_categories, [], "");
+        llSetTimerEvent(setup_timeout);
     }
 
     /* Re-display the dialog if the machine is touched, in case it is accidentally closed */
@@ -280,7 +296,8 @@ state choose_category
     {
         if (llDetectedKey(0) != quiz_starter) return;
         
-        llHTTPRequest(OPENTDB_API_CATEGORIES, [], "");
+        llHTTPRequest(opentdb_api_categories, [], "");
+        llSetTimerEvent(setup_timeout);
     }
     
     http_response(key request_id, integer status, list metadata, string body)
@@ -428,7 +445,7 @@ state choose_total_questions
                 {
                     integer possible_total_questions = amount_paid / factor;
                     
-                    if (possible_total_questions <= MAX_QUESTIONS)
+                    if (possible_total_questions <= max_questions)
                     {
                         integer possible_payout = amount_paid / possible_total_questions;
                         
@@ -444,7 +461,7 @@ state choose_total_questions
         /* Display the possible numbers of questions in a dialog and let the quiz starter choose */
         llListen(dialog_channel, "", quiz_starter, "");
         llDialog(quiz_starter, total_questions_text, ["CANCEL"] + total_questions_buttons, dialog_channel);
-        llSetTimerEvent(SETUP_TIMEOUT);
+        llSetTimerEvent(setup_timeout);
     }
     
     /* Re-display the dialog if the machine is touched, in case it is accidentally closed */
@@ -453,6 +470,7 @@ state choose_total_questions
         if (llDetectedKey(0) != quiz_starter) return;
         
         llDialog(quiz_starter, total_questions_text, ["CANCEL"] + total_questions_buttons, dialog_channel);
+        llSetTimerEvent(setup_timeout);
     }
     
     /* Handle the response from the quiz starter */
@@ -548,7 +566,7 @@ state choose_difficulty
         {
             llListen(dialog_channel, "", quiz_starter, "");
             llDialog(quiz_starter, "Choose a difficulty:", ["easy", "medium", "hard", "random", "CANCEL"], dialog_channel);
-            llSetTimerEvent(SETUP_TIMEOUT);
+            llSetTimerEvent(setup_timeout);
         }
     }
     
@@ -557,6 +575,7 @@ state choose_difficulty
         if (llDetectedKey(0) != quiz_starter) return;
 
         llDialog(quiz_starter, "Choose a difficulty:", ["easy", "medium", "hard", "random", "CANCEL"], dialog_channel);
+        llSetTimerEvent(setup_timeout);
     }
     
     listen(integer channel, string name, key id, string message)
@@ -612,12 +631,16 @@ state choose_payout
     {
         llListen(dialog_channel, "", quiz_starter, "");
         llDialog(quiz_starter, "How much is each question worth?", ["CANCEL", "0", "10", "20", "50", "100", "200", "500", "1000", "2000", "5000", "prize"], dialog_channel);
-        llSetTimerEvent(SETUP_TIMEOUT);
+        llSetTimerEvent(setup_timeout);
     }
     
     touch_end(integer detected)
     {
+        if (llDetectedKey(0) != quiz_starter) return;
+
         llDialog(quiz_starter, "How much is each question worth?", ["CANCEL", "0", "10", "20", "50", "100", "200", "500", "1000", "2000", "5000", "prize"], dialog_channel);
+        llSetTimerEvent(setup_timeout);
+
     }
     
     listen(integer channel, string name, key id, string message)
@@ -657,7 +680,7 @@ state choose_payout
                 state cancel_quiz;
             }
             
-            payout = PAYOUT_PRIZE;            
+            payout = -1;            
         }
         else
         {
@@ -712,7 +735,7 @@ state begin_quiz
                 
         string text = "A quiz of " + (string) total_questions + " questions has started!\n\nTo play, say the letter corresponding to the correct answer in nearby chat.\n\nEach person may only answer once per question!";
                 
-        if (payout == PAYOUT_PRIZE)
+        if (payout == -1)
         {
             text += "\n\nEach question is worth a mystery prize!";
         }
@@ -725,7 +748,7 @@ state begin_quiz
         
         announce(text);
                 
-        llSetTimerEvent(QUIZ_START_TIME);
+        llSetTimerEvent(quiz_start_time);
     }
     
     touch_end(integer detected)
@@ -813,7 +836,7 @@ state fetch_question
         }
         else
         {
-            string url = OPENTDB_API + "?encode=" + OPENTDB_API_ENCODING + "&amount=1";
+            string url = opentdb_api + "?encode=" + opentdb_api_encoding + "&amount=1";
             
             if (category != "random")
             {
@@ -878,7 +901,7 @@ state ask_question
         
         llPreloadSound("question");
                 
-        llSetTimerEvent(QUESTION_DELAY);
+        llSetTimerEvent(question_delay);
     }
     
     touch_end(integer detected)
@@ -969,7 +992,7 @@ state wait_for_answer
         llPreloadSound("ding");
         llPreloadSound("fail");
         
-        llSetTimerEvent(ANSWER_TIMEOUT);
+        llSetTimerEvent(answer_timeout);
     }
     
     touch_end(integer detected)
@@ -1015,7 +1038,7 @@ state wait_for_answer
             
             llSay(0, correct_answer + " was the correct answer!");
             
-            if (payout == PAYOUT_PRIZE)
+            if (payout == -1)
             {
                 integer objects = llGetInventoryNumber(INVENTORY_OBJECT);
                 integer r = (integer) llFrand(objects);
@@ -1133,7 +1156,7 @@ state end_quiz
         
         llSay(0, "\n* " + llGetObjectName() + " is powered by the [https://opentdb.com Open Trivia Database] *");
         
-        llSetTimerEvent(QUIZ_END_TIME);
+        llSetTimerEvent(quiz_end_time);
     }
     
     timer()
