@@ -1,0 +1,16 @@
+You can create your own quiz categories using a notecard!
+
+Each line of the notecard should contain a question and answers in the following format:
+
+<Question>  <Correct answer>  <Incorrect answer 1>  <Incorrect answer 2>  ...
+
+That is:
+- The text of the question.
+- Two spaces.
+- The correct answer.
+- Two spaces.
+- However many incorrect answers you wish to include (typically one for a true/false question, or three for multiple choice), each separated by 2 spaces.
+
+Save the notecard and place it in the quiz machine with the script, and it will appear as a category when starting a new quiz!
+
+BE SURE THERE ARE NO EXTRA LINES/SPACES! Use the notecard validator to verify the notecard is correct before using it.
