@@ -1,4 +1,4 @@
-/* Open Trivia Database Quiz Machine v2.0.0 */
+/* Open Trivia Database Quiz Machine v2.0.1 */
 
 /** CONFIGURATION **/
 
@@ -855,7 +855,7 @@ state fetch_question
 
         integer num_fields = llGetListLength(fields);
 
-        if (num_fields < 5)
+        if (num_fields < 3)
         {
             llSay(0, "An error occurred while fetching the question.");
             state cancel_quiz;
