@@ -9,7 +9,7 @@ That is:
 - Two spaces.
 - The correct answer.
 - Two spaces.
-- However many incorrect answers you wish to include (typically one for a true/false question, or three for multiple choice), each separated by 2 spaces.
+- However many incorrect answers you wish to include (typically one for a true/false question, or three for multiple choice), each separated by two spaces.
 
 Save the notecard and place it in the quiz machine with the script, and it will appear as a category when starting a new quiz!
 
