@@ -93,11 +93,11 @@ integer listener;
 /* Query ID when reading questions from notecards */
 key notecard_query;
 
-/* Current notecard line being read */
-integer notecard_line;
-
 /* Lines from the current category notecard */
-list notecard_lines;
+integer notecard_lines;
+
+/* Numbers of lines of questions in randomized order. */
+list notecard_questions;
 
 /* Display a message both overhead and in nearby chat */
 announce(string text)
@@ -126,7 +126,7 @@ increase_score(key id)
 /* Display a page of the category choice dialog */
 open_category_dialog()
 {
-    string text = "Choose a category: ";
+    string text = "Choose a category:";
     list buttons = ["CANCEL", "random", "MORE"];
     
     integer i;
@@ -162,6 +162,11 @@ default
                         
         llSetClickAction(CLICK_ACTION_TOUCH);
         
+        llRequestPermissions(llGetOwner(), PERMISSION_DEBIT);
+    }
+    
+    on_rez(integer start_param)
+    {
         llRequestPermissions(llGetOwner(), PERMISSION_DEBIT);
     }
     
@@ -201,7 +206,8 @@ state ready
         questions = [];
         correct_answer = "";
         scores = [];
-        notecard_lines = [];
+        notecard_lines = 0;
+        notecard_questions = [];
                         
         /* Set the buttons that appear in the Pay dialog */
         if (play_mode == 0)
@@ -354,7 +360,7 @@ state choose_category
         
         if (llGetInventoryType(category) == INVENTORY_NOTECARD)
         {
-            notecard_query = llGetNotecardLine(category, notecard_line = 0);
+            notecard_query = llGetNumberOfNotecardLines(category);
         }
         else
         {
@@ -369,19 +375,16 @@ state choose_category
             return;
         }
 
-        if (data == EOF)
+        notecard_lines = (integer) data;
+            
+        integer i;
+        for (i = 0; i < notecard_lines; ++i)
         {
-            notecard_lines = llListRandomize(notecard_lines, 1);
-            llOwnerSay((string) llGetListLength(notecard_lines));
-            state choose_total_questions;
+            notecard_questions += i;
         }
-
-        if (data != "")
-        {
-            notecard_lines += data;
-        }
-
-        notecard_query = llGetNotecardLine(category, ++notecard_line);
+        notecard_questions = llListRandomize(notecard_questions, 1);
+        
+        state choose_total_questions;
     }
 
     /* Timeout the quiz setup if the quiz starter takes too long */
@@ -422,7 +425,7 @@ state choose_total_questions
             {
                 total_questions_buttons = ["1"];
                 integer i;
-                for (i = 5; i <= llGetListLength(notecard_lines) && i <= 50; i += 5)
+                for (i = 5; i <= notecard_lines && i <= 50; i += 5)
                 {
                     total_questions_buttons += (string) i;
                 }
@@ -488,7 +491,7 @@ state choose_total_questions
             state cancel_quiz;
         }
 
-        if (llGetInventoryType(category) == INVENTORY_NOTECARD && total_questions > llGetListLength(notecard_lines))
+        if (llGetInventoryType(category) == INVENTORY_NOTECARD && total_questions > notecard_lines)
         {
             llRegionSayTo(quiz_starter, 0, "The notecard for the chosen category does not contain enough questions.");
             state cancel_quiz;
@@ -655,6 +658,7 @@ state choose_payout
             
             for (i = 0; i < objects && prizes < total_questions; ++i)
             {
+                string name = llGetInventoryName(INVENTORY_OBJECT, i);
                 integer perms = llGetInventoryPermMask(name, MASK_OWNER);
                 
                 if (perms & PERM_TRANSFER)
@@ -670,7 +674,7 @@ state choose_payout
                 }
                 else
                 {
-                    llRegionSayTo(quiz_starter, 0, llGetInventoryName(INVENTORY_OBJECT, i) + " is not transfer and cannot be used as a prize.");
+                    llRegionSayTo(quiz_starter, 0, name + " is not transfer and cannot be used as a prize.");
                 }
             }
             
@@ -728,9 +732,7 @@ state begin_quiz
                 amount_paid -= refund;
             }
         }
-        
-        llPreloadSound("begin");
-        
+                
         question_number = 1;
                 
         string text = "A quiz of " + (string) total_questions + " questions has started!\n\nTo play, say the letter corresponding to the correct answer in nearby chat.\n\nEach person may only answer once per question!";
@@ -808,31 +810,7 @@ state fetch_question
 
         if (llGetInventoryType(category) == INVENTORY_NOTECARD)
         {
-            list fields = llParseStringKeepNulls(llList2String(notecard_lines, question_number - 1), ["  "], [""]);
-
-            integer num_fields = llGetListLength(fields);
-
-            if (num_fields < 5)
-            {
-                llSay(0, "An error occurred while fetching the question.");
-                state cancel_quiz;
-            }
-
-            list incorrect_answers;
-
-            integer i;
-            for (i = 2; i < num_fields; ++i)
-            {
-                incorrect_answers += llList2String(fields, i);
-            }
-
-            questions = [llList2Json(JSON_OBJECT, [
-                "question", llList2String(fields, 0),
-                "correct_answer", llList2String(fields, 1),
-                "incorrect_answers", llList2Json(JSON_ARRAY, incorrect_answers)
-            ])];
-
-            state ask_question;
+            notecard_query = llGetNotecardLine(category, llList2Integer(notecard_questions, question_number - 1));
         }
         else
         {
@@ -863,6 +841,40 @@ state fetch_question
             state cancel_quiz;
         }
         
+        state ask_question;
+    }
+     
+    dataserver(key query_id, string data)
+    {
+        if (query_id != notecard_query)
+        {
+            return;
+        }
+        
+        list fields = llParseStringKeepNulls(data, ["  "], [""]);
+
+        integer num_fields = llGetListLength(fields);
+
+        if (num_fields < 5)
+        {
+            llSay(0, "An error occurred while fetching the question.");
+            state cancel_quiz;
+        }
+
+        list incorrect_answers;
+
+        integer i;
+        for (i = 2; i < num_fields; ++i)
+        {
+            incorrect_answers += llList2String(fields, i);
+        }
+
+        questions = [llList2Json(JSON_OBJECT, [
+            "question", llList2String(fields, 0),
+            "correct_answer", llList2String(fields, 1),
+            "incorrect_answers", llList2Json(JSON_ARRAY, incorrect_answers)
+        ])];
+
         state ask_question;
     }
 
@@ -898,9 +910,7 @@ state ask_question
         {
             announce("Here comes the next question...");
         }
-        
-        llPreloadSound("question");
-                
+                        
         llSetTimerEvent(question_delay);
     }
     
@@ -988,10 +998,6 @@ state wait_for_answer
     state_entry()
     {
         llListen(0, "", "", "");
-        
-        llPreloadSound("ding");
-        llPreloadSound("fail");
-        
         llSetTimerEvent(answer_timeout);
     }
     
@@ -1061,8 +1067,6 @@ state wait_for_answer
             }
             else
             {
-                llPreloadSound("end");
-                llSleep(1);
                 state end_quiz;
             }
         }
@@ -1096,9 +1100,7 @@ state wait_for_answer
             state fetch_question;
         }
         else
-        {
-            llPreloadSound("end");
-            
+        {            
             state end_quiz;
         }
     }
