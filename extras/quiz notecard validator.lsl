@@ -20,6 +20,7 @@ default
             
             if (num_notecards > 0)
             {
+                notecards = [];
                 integer i;
                 for (i = 0; i < num_notecards; ++i)
                 {
@@ -81,7 +82,7 @@ default
 
         list fields = llParseStringKeepNulls(data, ["  "], []);
         
-        if (llGetListLength(fields) < 5)
+        if (llGetListLength(fields) < 3)
         {
             ++notecard_errors;
             ++total_errors;
