@@ -41,7 +41,7 @@ default
         {
             if (notecard_errors == 0)
             {
-                llOwnerSay("  [✓] " + llList2String(notecards, notecard_index));
+                llOwnerSay("  [✓] " + llList2String(notecards, notecard_index) + ": " + (string) notecard_line + " questions");
             }
             else
             {
