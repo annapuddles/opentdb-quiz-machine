@@ -21,7 +21,7 @@ float question_delay = 10;
 float answer_timeout = 30;
 
 /* The time in seconds before the quiz setup dialogs will timeout */
-float setup_timeout = 300;
+float setup_timeout = 60;
 
 /* The delay before the quiz starts after announcing it */
 float quiz_start_time = 20;
@@ -205,7 +205,7 @@ default
     {
         llOwnerSay("Free memory: " + (string) llGetFreeMemory());
         
-        llSetText("Setting up... (touch to set permissions)", <1, 1, 1>, 1);
+        llSetText("Setting up... (touch to set permissions)", text_color, 1);
         
         /* Get a unique channel number based on the object's key. */
         dialog_channel = 0x80000000 | (integer)("0x"+(string)llGetKey());
@@ -267,7 +267,7 @@ default
             
             if (pos != -1)
             {
-                string name = llGetSubString(data, 0, pos);
+                string name = llGetSubString(data, 0, pos - 1);
                 string value = llGetSubString(data, pos + 3, -1);
                 
                 if (name == "question_delay")
@@ -297,6 +297,10 @@ default
                 else if (name == "play_mode")
                 {
                     play_mode = (integer) value;
+                }
+                else if (name == "text_color")
+                {
+                     text_color = (vector) value;
                 }
             }
         }
@@ -348,11 +352,11 @@ state ready
         }
         else if (play_mode == 1)
         {
-            llSetText("Pay me to start a quiz!", <1, 1, 1>, 1);
+            llSetText("Pay me to start a quiz!", text_color, 1);
         }
         else
         {
-            llSetText("Touch or pay me to start a quiz!", <1, 1, 1>, 1);
+            llSetText("Touch or pay me to start a quiz!", text_color, 1);
         }
     }
     
@@ -761,7 +765,7 @@ state ask_question
 {
     state_entry()
     {
-        llSetText("Fetching question...", <1, 1, 1>, 1);
+        llSetText("Fetching question...", text_color, 1);
 
         if (llGetInventoryType(category) == INVENTORY_NOTECARD)
         {
