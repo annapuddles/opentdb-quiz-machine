@@ -1,6 +1,9 @@
-/* Open Trivia Database Quiz Machine v2.0.1 */
+/* Open Trivia Database Quiz Machine v3.0.0 */
 
 /** CONFIGURATION **/
+
+/* The name of the configuration notecard in the inventory. */
+string config_notecard_name = "opentdb quiz machine config";
 
 /* URL of the Open Trivia Database API */
 string opentdb_api = "https://opentdb.com/api.php";
@@ -37,16 +40,13 @@ integer max_questions = 50;
  */
 integer play_mode = 1;
 
+/* The color to use for hover text */
+vector text_color = <1, 1, 1>;
+
 /** END OF CONFIGURATION **/
 
 /* The channel used for dialogs */
 integer dialog_channel;
-
-/* Stores the text for the total questions choice dialog */
-string total_questions_text;
-
-/* Stores the list of buttons for the total questions choice dialog */
-list total_questions_buttons;
 
 /* Stores the list of categories as JSON objects */
 list categories;
@@ -73,7 +73,7 @@ string difficulty;
 integer payout;
 
 /* The list of questions return by the API as JSON objects */
-list questions;
+string question_data;
 
 /* The current question the quiz is on */
 integer question_number;
@@ -93,34 +93,28 @@ integer listener;
 /* Query ID when reading questions from notecards */
 key notecard_query;
 
+/* Current line being read in a notecard. */
+integer notecard_line;
+
 /* Lines from the current category notecard */
 integer notecard_lines;
 
 /* Numbers of lines of questions in randomized order. */
 list notecard_questions;
 
+/* Current step the setup process is on:
+ * 0: Choose category
+ * 1: Choose total questions
+ * 2: Choose difficulty
+ * 3: Choose payout
+ */
+integer setup_step;
+
 /* Display a message both overhead and in nearby chat */
 announce(string text)
 {
-    llSetText(text, <1, 1, 1>, 1);
+    llSetText(text, text_color, 1);
     llSay(0, "\n" + text);
-}
-
-/* Increase the score of a player, or add them to the score list if this is their first correct answer */
-increase_score(key id)
-{
-    integer index = llListFindList(scores, [id]);
-    
-    if (index == -1)
-    {
-        scores += [id, 1];
-    }
-    else
-    {
-        integer score = llList2Integer(scores, index + 1);
-        
-        scores = llListReplaceList(scores, [id, score + 1], index, index + 1);
-    }
 }
 
 /* Display a page of the category choice dialog */
@@ -146,6 +140,62 @@ open_category_dialog()
     }
     
     llDialog(quiz_starter, text, buttons, dialog_channel);
+}
+
+open_total_questions_dialog()
+{
+    string total_questions_text = "How many questions?";
+    list total_questions_buttons;
+    
+    /* If no payment was made, create a standard set of question numbers. */
+    if (amount_paid == 0)
+    {
+        /* If the questions are from a notecard, don't allow selecting more questions than the notecard contains. */
+        if (llGetInventoryType(category) == INVENTORY_NOTECARD)
+        {
+            total_questions_buttons = ["1"];
+            integer i;
+            for (i = 5; i <= notecard_lines && i <= 50; i += 5)
+            {
+                total_questions_buttons += (string) i;
+            }
+        }
+        /* If the questions are from the API, just use multiples of 5 up to 50 */
+        else
+        {
+            total_questions_buttons = ["1", "5", "10", "15", "20", "25", "30", "35", "40", "45", "50"];
+        }
+    }
+    /* If someone paid the machine, then create a list of possible numbers of questions based on factors of the amount they paid */
+    else
+    {
+        integer factor;
+        integer buttons;
+        
+        for (factor = amount_paid; factor >= 1 && buttons <= 10; --factor)
+        {
+            if (amount_paid % factor == 0)
+            {
+                integer possible_total_questions = amount_paid / factor;
+                
+                if (possible_total_questions <= max_questions)
+                {
+                    integer possible_payout = amount_paid / possible_total_questions;
+                    total_questions_text += "\n" + (string) possible_total_questions + " = L$" + (string) possible_payout + " per question";
+                    total_questions_buttons += (string) possible_total_questions;
+                    ++buttons;
+                }
+            }
+        }            
+    }
+    
+    /* Display the possible numbers of questions in a dialog and let the quiz starter choose */
+    llDialog(quiz_starter, total_questions_text, ["CANCEL"] + total_questions_buttons, dialog_channel);
+}
+
+open_payout_dialog()
+{
+    llDialog(quiz_starter, "How much is each question worth?", ["CANCEL", "0", "10", "20", "50", "100", "200", "500", "1000", "2000", "5000", "prize"], dialog_channel);
 }
 
 /* In the default state, request the necessary permissions from the owner */
@@ -187,8 +237,71 @@ default
     {
         if (permissions & PERMISSION_DEBIT)
         {
+            if (llGetInventoryType(config_notecard_name) == INVENTORY_NOTECARD)
+            {
+                llSetText("Reading configuration...", text_color, 1);
+                notecard_query = llGetNotecardLine(config_notecard_name, notecard_line = 0);
+            }
+            else
+            {
+                state ready;
+            }
+        }
+    }
+    
+    dataserver(key query_id, string data)
+    {
+        if (query_id != notecard_query)
+        {
+            return;
+        }
+        
+        if (data == EOF)
+        {
             state ready;
         }
+        
+        if (data != "" && llGetSubString(data, 0, 0) != "#")
+        {
+            integer pos = llSubStringIndex(data, " = ");
+            
+            if (pos != -1)
+            {
+                string name = llGetSubString(data, 0, pos);
+                string value = llGetSubString(data, pos + 3, -1);
+                
+                if (name == "question_delay")
+                {
+                    question_delay = (float) value;
+                }
+                else if (name == "answer_timeout")
+                {
+                    answer_timeout = (float) value;
+                }
+                else if (name == "setup_timeout")
+                {
+                    setup_timeout = (float) value;
+                }
+                else if (name == "quiz_start_time")
+                {
+                    quiz_start_time = (float) value;
+                }
+                else if (name == "quiz_end_time")
+                {
+                    quiz_end_time = (float) value;
+                }
+                else if (name == "max_questions")
+                {
+                    max_questions = (integer) value;
+                }
+                else if (name == "play_mode")
+                {
+                    play_mode = (integer) value;
+                }
+            }
+        }
+        
+        notecard_query = llGetNotecardLine(config_notecard_name, ++notecard_line);
     }
 }
 
@@ -203,7 +316,7 @@ state ready
         categories = [];
         category = "";
         difficulty = "";
-        questions = [];
+        question_data = "";
         correct_answer = "";
         scores = [];
         notecard_lines = 0;
@@ -255,7 +368,7 @@ state ready
         {
             amount_paid = 0;
             quiz_starter = toucher;
-            state choose_category;
+            state setup;
         }
         else
         {
@@ -267,10 +380,8 @@ state ready
     money(key id, integer amount)
     {
         amount_paid = amount;
-        
         quiz_starter = id;
-        
-        state choose_category;
+        state setup;
     }
     
     /* Reset script on owner transfer. */
@@ -283,16 +394,18 @@ state ready
     }
 }
 
-/* Get the category of questions that will be asked in the quiz */
-state choose_category
+/* Perform the setup for a new quiz. */
+state setup
 {
     state_entry()
     {
-        announce(llGetUsername(quiz_starter) + " is starting a quiz...");
-        llRegionSayTo(quiz_starter, 0, "If you close out of a dialog during setup, touch the quiz machine again to re-open it.");
         llSetClickAction(CLICK_ACTION_NONE);
-
         llListen(dialog_channel, "", quiz_starter, "");
+
+        announce(llGetDisplayName(quiz_starter) + " is starting a quiz...");
+        llRegionSayTo(quiz_starter, 0, "If you close out of a dialog during setup, touch the quiz machine again to re-open it.");
+        
+        setup_step = 0;
         llHTTPRequest(opentdb_api_categories, [], "");
         llSetTimerEvent(setup_timeout);
     }
@@ -302,7 +415,23 @@ state choose_category
     {
         if (llDetectedKey(0) != quiz_starter) return;
         
-        llHTTPRequest(opentdb_api_categories, [], "");
+        if (setup_step == 0)
+        {
+            llHTTPRequest(opentdb_api_categories, [], "");
+        }
+        else if (setup_step == 1)
+        {
+            open_total_questions_dialog();
+        }
+        else if (setup_step == 2)
+        {
+            llDialog(quiz_starter, "Choose a difficulty:", ["easy", "medium", "hard", "random", "CANCEL"], dialog_channel);
+        }
+        else if (setup_step == 3)
+        {
+             open_payout_dialog();
+        }
+        
         llSetTimerEvent(setup_timeout);
     }
     
@@ -325,7 +454,10 @@ state choose_category
             for (i = 0; i < num_notecards; ++i)
             {
                 string name = llGetInventoryName(INVENTORY_NOTECARD, i);
-                notecard_categories += llList2Json(JSON_OBJECT, ["id", name, "name", name]);
+                if (name != config_notecard_name)
+                {
+                    notecard_categories += llList2Json(JSON_OBJECT, ["id", name, "name", name]);
+                }
             }
             categories = notecard_categories + categories;
         }
@@ -341,30 +473,156 @@ state choose_category
             state cancel_quiz;
         }
         
-        if (message == "MORE")
+        if (setup_step == 0)
         {
-            categories_index += 9;
-            
-            if (categories_index >= llGetListLength(categories))
+            if (message == "MORE")
             {
-                categories_index = 0;
+                categories_index += 9;
+                
+                if (categories_index >= llGetListLength(categories))
+                {
+                    categories_index = 0;
+                }
+                
+                open_category_dialog();
+                return;
             }
             
-            open_category_dialog();
-            return;
+            category = message;
+            
+            categories = [];
+            
+            if (llGetInventoryType(category) == INVENTORY_NOTECARD)
+            {
+                notecard_query = llGetNumberOfNotecardLines(category);
+            }
+            else
+            {
+                setup_step = 1;
+                open_total_questions_dialog();
+            }
         }
-        
-        category = message;
-        
-        categories = [];
-        
-        if (llGetInventoryType(category) == INVENTORY_NOTECARD)
+        else if (setup_step == 1)
         {
-            notecard_query = llGetNumberOfNotecardLines(category);
+            total_questions = (integer) message;
+            
+            if (total_questions < 1)
+            {
+                state cancel_quiz;
+            }
+    
+            if (llGetInventoryType(category) == INVENTORY_NOTECARD && total_questions > notecard_lines)
+            {
+                llRegionSayTo(quiz_starter, 0, "The notecard for the chosen category does not contain enough questions.");
+                state cancel_quiz;
+            }
+                    
+            if (amount_paid > 0)
+            {
+                payout = amount_paid / total_questions;
+                
+                if (payout < 1)
+                {
+                    llRegionSayTo(quiz_starter, 0, "The payout is too small for each question.");
+                    
+                    state cancel_quiz;
+                }
+            }
+            
+            if (llGetInventoryType(category) == INVENTORY_NOTECARD)
+            {
+                if (amount_paid == 0)
+                {
+                    if (quiz_starter == llGetOwner())
+                    {
+                        setup_step = 3;
+                        open_payout_dialog();
+                    }
+                    else
+                    {
+                        payout = 0;
+                        state begin_quiz;
+                    }
+                }
+                else
+                {
+                    state begin_quiz;
+                }
+            }
+            else
+            {
+                setup_step = 2;
+                llDialog(quiz_starter, "Choose a difficulty:", ["easy", "medium", "hard", "random", "CANCEL"], dialog_channel);
+                llSetTimerEvent(setup_timeout);
+            }
         }
-        else
+        else if (setup_step == 2)
         {
-            state choose_total_questions;
+            difficulty = message;
+            
+            if (amount_paid == 0)
+            {
+                if (quiz_starter == llGetOwner())
+                {
+                    setup_step = 3;
+                    open_payout_dialog();
+                }
+                else
+                {
+                    payout = 0;
+                    state begin_quiz;
+                }
+            }
+            else
+            {
+                state begin_quiz;
+            }
+        }
+        else if (setup_step == 3)
+        {
+            if (message == "prize")
+            {    
+                integer objects = llGetInventoryNumber(INVENTORY_OBJECT);
+                integer prizes;
+                integer i;
+                
+                for (i = 0; i < objects && prizes < total_questions; ++i)
+                {
+                    string name = llGetInventoryName(INVENTORY_OBJECT, i);
+                    integer perms = llGetInventoryPermMask(name, MASK_OWNER);
+                    
+                    if (perms & PERM_TRANSFER)
+                    {
+                        if (perms & PERM_COPY)
+                        {
+                            prizes = total_questions;
+                        }
+                        else
+                        {
+                            ++prizes;
+                        }
+                    }
+                    else
+                    {
+                        llRegionSayTo(quiz_starter, 0, name + " is not transfer and cannot be used as a prize.");
+                    }
+                }
+                
+                if (prizes < total_questions)
+                {
+                    llRegionSayTo(quiz_starter, 0, "There are too few prizes for the total questions. Please add more and try again.");
+                    state cancel_quiz;
+                }
+                
+                /* Set payout to be a prize. */
+                payout = -1;
+            }
+            else
+            {
+                payout = (integer) message;
+            }
+            
+            state begin_quiz;
         }
     }
     
@@ -384,320 +642,14 @@ state choose_category
         }
         notecard_questions = llListRandomize(notecard_questions, 1);
         
-        state choose_total_questions;
+        setup_step = 1;
+        open_total_questions_dialog();
     }
 
     /* Timeout the quiz setup if the quiz starter takes too long */
     timer()
     {
         llSetTimerEvent(0);
-        state cancel_quiz;
-    }
-
-    state_exit()
-    {
-        llSetTimerEvent(0);
-    }
-    
-    /* Reset script on owner transfer. */
-    changed(integer change)
-    {
-        if (change & CHANGED_OWNER)
-        {
-            llResetScript();
-        }
-    }
-}
-
-/* Get the number of questions for the quiz from the quiz starter */
-state choose_total_questions
-{
-    state_entry()
-    {
-        total_questions_text = "How many questions?";
-        total_questions_buttons = [];
-        
-        /* If no payment was made, create a standard set of question numbers. */
-        if (amount_paid == 0)
-        {
-            /* If the questions are from a notecard, don't allow selecting more questions than the notecard contains. */
-            if (llGetInventoryType(category) == INVENTORY_NOTECARD)
-            {
-                total_questions_buttons = ["1"];
-                integer i;
-                for (i = 5; i <= notecard_lines && i <= 50; i += 5)
-                {
-                    total_questions_buttons += (string) i;
-                }
-            }
-            /* If the questions are from the API, just use multiples of 5 up to 50 */
-            else
-            {
-                total_questions_buttons = ["1", "5", "10", "15", "20", "25", "30", "35", "40", "45", "50"];
-            }
-        }
-        /* If someone paid the machine, then create a list of possible numbers of questions based on factors of the amount they paid */
-        else
-        {
-            integer factor;
-            integer buttons;
-            
-            for (factor = amount_paid; factor >= 1 && buttons <= 10; --factor)
-            {
-                if (amount_paid % factor == 0)
-                {
-                    integer possible_total_questions = amount_paid / factor;
-                    
-                    if (possible_total_questions <= max_questions)
-                    {
-                        integer possible_payout = amount_paid / possible_total_questions;
-                        
-                        total_questions_text += "\n" + (string) possible_total_questions + " = L$" + (string) possible_payout + " per question";
-                        total_questions_buttons += (string) possible_total_questions;
-                        
-                        ++buttons;
-                    }
-                }
-            }            
-        }
-        
-        /* Display the possible numbers of questions in a dialog and let the quiz starter choose */
-        llListen(dialog_channel, "", quiz_starter, "");
-        llDialog(quiz_starter, total_questions_text, ["CANCEL"] + total_questions_buttons, dialog_channel);
-        llSetTimerEvent(setup_timeout);
-    }
-    
-    /* Re-display the dialog if the machine is touched, in case it is accidentally closed */
-    touch_end(integer detected)
-    {
-        if (llDetectedKey(0) != quiz_starter) return;
-        
-        llDialog(quiz_starter, total_questions_text, ["CANCEL"] + total_questions_buttons, dialog_channel);
-        llSetTimerEvent(setup_timeout);
-    }
-    
-    /* Handle the response from the quiz starter */
-    listen(integer channel, string name, key id, string message)
-    {
-        if (message == "CANCEL")
-        {
-            state cancel_quiz;
-        }
-        
-        total_questions = (integer) message;
-        
-        if (total_questions < 1)
-        {
-            state cancel_quiz;
-        }
-
-        if (llGetInventoryType(category) == INVENTORY_NOTECARD && total_questions > notecard_lines)
-        {
-            llRegionSayTo(quiz_starter, 0, "The notecard for the chosen category does not contain enough questions.");
-            state cancel_quiz;
-        }
-                
-        if (amount_paid > 0)
-        {
-            payout = amount_paid / total_questions;
-            
-            if (payout < 1)
-            {
-                llRegionSayTo(quiz_starter, 0, "The payout is too small for each question.");
-                
-                state cancel_quiz;
-            }
-        }
-        
-        total_questions_text = "";
-        total_questions_buttons = [];
-        
-        state choose_difficulty;
-    }
-    
-    /* Timeout the quiz setup if the quiz starter takes too long */
-    timer()
-    {
-        llSetTimerEvent(0);
-        
-        state cancel_quiz;
-    }
-    
-    /* Reset the dialog variables to free up memory */
-    state_exit()
-    {
-        llSetTimerEvent(0);
-        total_questions_text = "";
-        total_questions_buttons = [];
-    }
-    
-    /* Reset script on owner transfer. */
-    changed(integer change)
-    {
-        if (change & CHANGED_OWNER)
-        {
-            llResetScript();
-        }
-    }
-}
-
-/* Get the difficulty of the questions that will be asked */
-state choose_difficulty
-{
-    state_entry()
-    {
-        if (llGetInventoryType(category) == INVENTORY_NOTECARD)
-        {
-            if (amount_paid == 0)
-            {
-                if (quiz_starter == llGetOwner())
-                {
-                    state choose_payout;
-                }
-                else
-                {
-                    payout = 0;
-                    state begin_quiz;
-                }
-            }
-            else
-            {
-                state begin_quiz;
-            }
-        }
-        else
-        {
-            llListen(dialog_channel, "", quiz_starter, "");
-            llDialog(quiz_starter, "Choose a difficulty:", ["easy", "medium", "hard", "random", "CANCEL"], dialog_channel);
-            llSetTimerEvent(setup_timeout);
-        }
-    }
-    
-    touch_end(integer detected)
-    {
-        if (llDetectedKey(0) != quiz_starter) return;
-
-        llDialog(quiz_starter, "Choose a difficulty:", ["easy", "medium", "hard", "random", "CANCEL"], dialog_channel);
-        llSetTimerEvent(setup_timeout);
-    }
-    
-    listen(integer channel, string name, key id, string message)
-    {
-        if (message == "CANCEL") state cancel_quiz;
-        
-        difficulty = message;
-        
-        if (amount_paid == 0)
-        {
-            if (quiz_starter == llGetOwner())
-            {
-                state choose_payout;
-            }
-            else
-            {
-                payout = 0;
-                state begin_quiz;
-            }
-        }
-        else
-        {
-            state begin_quiz;
-        }
-    }
-    
-    timer()
-    {
-        llSetTimerEvent(0);
-        
-        state cancel_quiz;
-    }
-
-    state_exit()
-    {
-        llSetTimerEvent(0);
-    }
-    
-    /* Reset script on owner transfer. */
-    changed(integer change)
-    {
-        if (change & CHANGED_OWNER)
-        {
-            llResetScript();
-        }
-    }
-}
-
-/* If setup is initiated by the owner, get the payout for each question (otherwise, it is based on the amount paid to the machine) */
-state choose_payout
-{
-    state_entry()
-    {
-        llListen(dialog_channel, "", quiz_starter, "");
-        llDialog(quiz_starter, "How much is each question worth?", ["CANCEL", "0", "10", "20", "50", "100", "200", "500", "1000", "2000", "5000", "prize"], dialog_channel);
-        llSetTimerEvent(setup_timeout);
-    }
-    
-    touch_end(integer detected)
-    {
-        if (llDetectedKey(0) != quiz_starter) return;
-
-        llDialog(quiz_starter, "How much is each question worth?", ["CANCEL", "0", "10", "20", "50", "100", "200", "500", "1000", "2000", "5000", "prize"], dialog_channel);
-        llSetTimerEvent(setup_timeout);
-
-    }
-    
-    listen(integer channel, string name, key id, string message)
-    {
-        if (message == "CANCEL") state cancel_quiz;
-        
-        if (message == "prize")
-        {    
-            integer objects = llGetInventoryNumber(INVENTORY_OBJECT);
-            integer prizes;
-            integer i;
-            
-            for (i = 0; i < objects && prizes < total_questions; ++i)
-            {
-                string name = llGetInventoryName(INVENTORY_OBJECT, i);
-                integer perms = llGetInventoryPermMask(name, MASK_OWNER);
-                
-                if (perms & PERM_TRANSFER)
-                {
-                    if (perms & PERM_COPY)
-                    {
-                        prizes = total_questions;
-                    }
-                    else
-                    {
-                        ++prizes;
-                    }
-                }
-                else
-                {
-                    llRegionSayTo(quiz_starter, 0, name + " is not transfer and cannot be used as a prize.");
-                }
-            }
-            
-            if (prizes < total_questions)
-            {
-                llRegionSayTo(quiz_starter, 0, "There are too few prizes for the total questions. Please add more and try again.");
-                state cancel_quiz;
-            }
-            
-            payout = -1;            
-        }
-        else
-        {
-            payout = (integer) message;
-        }
-        
-        state begin_quiz;
-    }
-    
-    timer()
-    {
-        llSetTimerEvent(0);
-        
         state cancel_quiz;
     }
 
@@ -736,11 +688,13 @@ state begin_quiz
         question_number = 1;
                 
         string text = "A quiz of " + (string) total_questions + " questions has started!\n\nTo play, say the letter corresponding to the correct answer in nearby chat.\n\nEach person may only answer once per question!";
-                
+        
+        /* If payout is set to a prize... */
         if (payout == -1)
         {
             text += "\n\nEach question is worth a mystery prize!";
         }
+        /* If payout is an amount of money... */
         else if (payout > 0)
         {
             text += "\n\nEach question is worth L$" + (string) payout + "!";
@@ -784,7 +738,7 @@ state begin_quiz
         
         scores = [];
         
-        state fetch_question;
+        state ask_question;
     }
 
     state_exit()
@@ -802,7 +756,8 @@ state begin_quiz
     }
 }
 
-state fetch_question
+/* Display the question to the players */
+state ask_question
 {
     state_entry()
     {
@@ -832,16 +787,29 @@ state fetch_question
     
     http_response(key request_id, integer status, list metadata, string body)
     {        
-        questions = llJson2List(llJsonGetValue(body, ["results"]));
+        question_data = llJsonGetValue(body, ["results", 0]);
         body = "";
         
-        if (llGetListLength(questions) < 1)
+        if (question_data == JSON_INVALID)
         {
             llSay(0, "An error occurred while fetching the question.");
             state cancel_quiz;
         }
         
-        state ask_question;
+        if (question_number == 1)
+        {
+            announce("Here comes the first question...");
+        }
+        else if (question_number == total_questions)
+        {
+            announce("Here comes the last question...");
+        }
+        else
+        {
+            announce("Here comes the next question...");
+        }
+                        
+        llSetTimerEvent(question_delay);
     }
      
     dataserver(key query_id, string data)
@@ -869,35 +837,12 @@ state fetch_question
             incorrect_answers += llList2String(fields, i);
         }
 
-        questions = [llList2Json(JSON_OBJECT, [
+        question_data = llList2Json(JSON_OBJECT, [
             "question", llList2String(fields, 0),
             "correct_answer", llList2String(fields, 1),
             "incorrect_answers", llList2Json(JSON_ARRAY, incorrect_answers)
-        ])];
-
-        state ask_question;
-    }
-
-    state_exit()
-    {
-        llSetText("", <1, 1, 1>, 1);
-    }
-
-    /* Reset script on owner transfer. */
-    changed(integer change)
-    {
-        if (change & CHANGED_OWNER)
-        {
-            llResetScript();
-        }
-    }
-}
-
-/* Display the question to the players */
-state ask_question
-{
-    state_entry()
-    {                
+        ]);
+        
         if (question_number == 1)
         {
             announce("Here comes the first question...");
@@ -942,9 +887,7 @@ state ask_question
     timer()
     {
         llSetTimerEvent(0);
-        
-        string question_data = llList2String(questions, 0);
-        
+                
         string question = llUnescapeURL(llJsonGetValue(question_data, ["question"]));
         
         correct_answer = llUnescapeURL(llJsonGetValue(question_data, ["correct_answer"]));
@@ -1044,26 +987,38 @@ state wait_for_answer
             
             llSay(0, correct_answer + " was the correct answer!");
             
+            /* If payout is prizes... */
             if (payout == -1)
             {
                 integer objects = llGetInventoryNumber(INVENTORY_OBJECT);
                 integer r = (integer) llFrand(objects);
                 llGiveInventory(id, llGetInventoryName(INVENTORY_OBJECT, r));
             }
+            /* If payout is money... */
             else if (payout > 0)
             {
                 llGiveMoney(id, payout);
-                
                 amount_paid -= payout;
             }
             
-            increase_score(id);
+            integer index = llListFindList(scores, [id]);
+            
+            if (index == -1)
+            {
+                scores += [id, 1];
+            }
+            else
+            {
+                integer score = llList2Integer(scores, index + 1);
+                
+                scores = llListReplaceList(scores, [id, score + 1], index, index + 1);
+            }
             
             ++question_number;
             
             if (question_number <= total_questions)
             {
-                state fetch_question;
+                state ask_question;
             }
             else
             {
@@ -1073,7 +1028,6 @@ state wait_for_answer
         else
         {
             incorrect_guessers += id;
-            
             llRegionSayTo(id, 0, "Sorry, " + llToUpper(message) + " is not correct. Please try again on the next question!");
         }
     }
@@ -1097,7 +1051,7 @@ state wait_for_answer
         {
             llPlaySound("fail", 1);
             
-            state fetch_question;
+            state ask_question;
         }
         else
         {            
@@ -1143,7 +1097,7 @@ state end_quiz
                 key id = llList2Key(scores, i);
                 integer score = llList2Integer(scores, i + 1);
                 
-                string name = llGetUsername(id);
+                string name = llGetDisplayName(id);
                 
                 text += "\n  " + name + ": " + (string) score;
                 
