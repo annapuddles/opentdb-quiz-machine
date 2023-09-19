@@ -7,7 +7,6 @@
 # After changing this notecard, reset the script to load the new configuration settings.
 
 # The play mode of the machine:
-#
 # 0: Locked: Only the owner may start a quiz.
 # 1: Pay-to-play: Anyone may pay to start a quiz, but only the owner can start a quiz without paying.
 # 2: Free-to-play: Anyone can start a quiz without paying.
