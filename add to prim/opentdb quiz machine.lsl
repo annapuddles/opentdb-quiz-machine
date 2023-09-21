@@ -1,4 +1,4 @@
-/* Open Trivia Database Quiz Machine v3.0.0 */
+/* Open Trivia Database Quiz Machine v3.1.0 */
 
 /** CONFIGURATION **/
 
@@ -42,6 +42,9 @@ integer play_mode = 1;
 
 /* The color to use for hover text */
 vector text_color = <1, 1, 1>;
+
+/* Whether a group is required to participate in quizzes. */
+integer require_group = FALSE;
 
 /** END OF CONFIGURATION **/
 
@@ -300,7 +303,11 @@ default
                 }
                 else if (name == "text_color")
                 {
-                     text_color = (vector) value;
+                    text_color = (vector) value;
+                }
+                else if (name == "require_group")
+                {
+                    require_group = (integer) value;
                 }
             }
         }
@@ -368,7 +375,7 @@ state ready
     {
         key toucher = llDetectedKey(0);
         
-        if (play_mode == 2 || toucher == llGetOwner())
+        if (toucher == llGetOwner() || (play_mode == 2 && (!require_group || llSameGroup(toucher))))
         {
             amount_paid = 0;
             quiz_starter = toucher;
@@ -376,16 +383,24 @@ state ready
         }
         else
         {
-            llRegionSayTo(toucher, 0, "Sorry, that is restricted to the owner.");
+            llRegionSayTo(toucher, 0, "Sorry, that is restricted to the owner or group.");
         }
     }
     
     /* Begin the quiz setup when someone pays the machine */
     money(key id, integer amount)
     {
-        amount_paid = amount;
-        quiz_starter = id;
-        state setup;
+        if (require_group && !llSameGroup(id))
+        {
+            llRegionSayTo(id, 0, "Sorry, that is restricted to the owner or group.");
+            llGiveMoney(id, amount);
+        }
+        else
+        {
+            amount_paid = amount;
+            quiz_starter = id;
+            state setup;
+        }
     }
     
     /* Reset script on owner transfer. */
@@ -978,6 +993,12 @@ state wait_for_answer
         }
         
         if (llStringLength(message) > 1) return;
+            
+        if (require_group && !llSameGroup(id))
+        {
+            llRegionSayTo(id, 0, "Sorry, that is restricted to the owner or group.");
+            return;
+        }
         
         if (llListFindList(incorrect_guessers, [id]) != -1)
         {
@@ -1114,7 +1135,10 @@ state end_quiz
         
         announce(text);
         
-        llSay(0, "\n* " + llGetObjectName() + " is powered by the [https://opentdb.com Open Trivia Database] *");
+        if (llGetInventoryType(category) != INVENTORY_NOTECARD)
+        {
+            llSay(0, "\n* " + llGetObjectName() + " is powered by the [https://opentdb.com Open Trivia Database] *");
+        }
         
         llSetTimerEvent(quiz_end_time);
     }
