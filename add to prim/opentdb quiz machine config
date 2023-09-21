@@ -12,6 +12,9 @@
 # 2: Free-to-play: Anyone can start a quiz without paying.
 play_mode = 1
 
+# Whether a group is required to participate in quizzes.
+require_group = 0
+
 # The delay in seconds before a question is asked after announcing it
 question_delay = 10
 
@@ -19,7 +22,7 @@ question_delay = 10
 answer_timeout = 30
 
 # The time in seconds before the quiz setup dialogs will timeout
-setup_timeout = 300
+setup_timeout = 60
 
 # The delay before the quiz starts after announcing it
 quiz_start_time = 20
