@@ -1,4 +1,4 @@
-/* Open Trivia Database Quiz Machine v3.1.0 */
+/* Open Trivia Database Quiz Machine v3.2.0 */
 
 /** CONFIGURATION **/
 
@@ -13,6 +13,9 @@ string opentdb_api_categories = "https://opentdb.com/api_category.php";
 
 /* The encoding we want the API to use */
 string opentdb_api_encoding = "url3986";
+
+/* Whether to show OpenTDB categories, or only custom notecards. */
+integer opentdb_enabled = TRUE;
 
 /* The delay in seconds before a question is asked after announcing it */
 float question_delay = 10;
@@ -118,6 +121,29 @@ announce(string text)
 {
     llSetText(text, text_color, 1);
     llSay(0, "\n" + text);
+}
+
+/* Add custom notecards to the category list and open the selection dialog. */
+complete_category_setup()
+{
+    integer num_notecards = llGetInventoryNumber(INVENTORY_NOTECARD);
+    if (num_notecards > 0)
+    {
+        list notecard_categories;
+        integer i;
+        for (i = 0; i < num_notecards; ++i)
+        {
+            string name = llGetInventoryName(INVENTORY_NOTECARD, i);
+            if (name != config_notecard_name)
+            {
+                notecard_categories += llList2Json(JSON_OBJECT, ["id", name, "name", name]);
+            }
+        }
+        categories = notecard_categories + categories;
+    }
+    
+    categories_index = 0;
+    open_category_dialog();
 }
 
 /* Display a page of the category choice dialog */
@@ -309,6 +335,10 @@ default
                 {
                     require_group = (integer) value;
                 }
+                else if (name == "opentdb_enabled")
+                {
+                    opentdb_enabled = (integer) value;
+                }
             }
         }
         
@@ -425,7 +455,15 @@ state setup
         llRegionSayTo(quiz_starter, 0, "If you close out of a dialog during setup, touch the quiz machine again to re-open it.");
         
         setup_step = 0;
-        llHTTPRequest(opentdb_api_categories, [], "");
+        
+        if (opentdb_enabled)
+        {
+            llHTTPRequest(opentdb_api_categories, [], "");
+        }
+        else
+        {
+            complete_category_setup();
+        }
         llSetTimerEvent(setup_timeout);
     }
 
@@ -465,24 +503,7 @@ state setup
             state cancel_quiz;
         }
         
-        integer num_notecards = llGetInventoryNumber(INVENTORY_NOTECARD);
-        if (num_notecards > 0)
-        {
-            list notecard_categories;
-            integer i;
-            for (i = 0; i < num_notecards; ++i)
-            {
-                string name = llGetInventoryName(INVENTORY_NOTECARD, i);
-                if (name != config_notecard_name)
-                {
-                    notecard_categories += llList2Json(JSON_OBJECT, ["id", name, "name", name]);
-                }
-            }
-            categories = notecard_categories + categories;
-        }
-        
-        categories_index = 0;
-        open_category_dialog();
+        complete_category_setup();
     }
     
     listen(integer channel, string name, key id, string message)
