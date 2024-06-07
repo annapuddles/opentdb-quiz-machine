@@ -1,4 +1,4 @@
-/* Open Trivia Database Quiz Machine v3.2.0 */
+/* Open Trivia Database Quiz Machine v3.3.0 */
 
 /** CONFIGURATION **/
 
@@ -49,7 +49,56 @@ vector text_color = <1, 1, 1>;
 /* Whether a group is required to participate in quizzes. */
 integer require_group = FALSE;
 
+/* Language code used to read the appropriate language notecard. */
+string language = "en";
+
 /** END OF CONFIGURATION **/
+
+/* Message strings read from the selected language notecard. */
+string LANG_CHOOSE_CATEGORY;
+string LANG_CANCEL;
+string LANG_RANDOM;
+string LANG_MORE;
+string LANG_TOTAL_QUESTIONS;
+string LANG_PER_QUESTION;
+string LANG_QUESTION_WORTH;
+string LANG_PRIZE;
+string LANG_PAY_TO_PLAY;
+string LANG_FREE_PLAY;
+string LANG_RESTRICTED;
+string LANG_STARTING_QUIZ;
+string LANG_CLOSE_DIALOG;
+string LANG_CHOOSE_DIFFICULTY;
+string LANG_NOT_ENOUGH_QUESTIONS;
+string LANG_PAYOUT_TOO_SMALL;
+string LANG_NO_TRANSFER;
+string LANG_TOO_FEW_PRIZES;
+string LANG_QUIZ_START_1;
+string LANG_QUIZ_START_2;
+string LANG_QUIZ_START_3;
+string LANG_QUIZ_START_4;
+string LANG_PAYOUT_PRIZE;
+string LANG_PAYOUT_LINDENS;
+string LANG_RESTRICTED_TO_QUIZ_RUNNER;
+string LANG_CANCEL_QUIZ;
+string LANG_YES;
+string LANG_NO;
+string LANG_FETCHING;
+string LANG_FETCHING_ERROR;
+string LANG_FIRST_QUESTION;
+string LANG_NEXT_QUESTION;
+string LANG_LAST_QUESTION;
+string LANG_ALREADY_GUESSED;
+string LANG_CORRECT_ANSWER;
+string LANG_INCORRECT_ANSWER_1;
+string LANG_INCORRECT_ANSWER_2;
+string LANG_TIMES_UP;
+string LANG_END_QUIZ;
+string LANG_SCORES;
+string LANG_QUIZ_CANCELLED;
+string LANG_REFUND_1;
+string LANG_REFUND_2;
+string LANG_FETCH_CATEGORIES_ERROR;
 
 /* The channel used for dialogs */
 integer dialog_channel;
@@ -99,6 +148,9 @@ integer listener;
 /* Query ID when reading questions from notecards */
 key notecard_query;
 
+/* Name of the notecard currently being read. */
+string notecard_name;
+
 /* Current line being read in a notecard. */
 integer notecard_line;
 
@@ -134,7 +186,7 @@ complete_category_setup()
         for (i = 0; i < num_notecards; ++i)
         {
             string name = llGetInventoryName(INVENTORY_NOTECARD, i);
-            if (name != config_notecard_name)
+            if (name != config_notecard_name && llGetSubString(name, 0, 4) != "lang_")
             {
                 notecard_categories += llList2Json(JSON_OBJECT, ["id", name, "name", name]);
             }
@@ -149,8 +201,8 @@ complete_category_setup()
 /* Display a page of the category choice dialog */
 open_category_dialog()
 {
-    string text = "Choose a category:";
-    list buttons = ["CANCEL", "random", "MORE"];
+    string text = LANG_CHOOSE_CATEGORY;
+    list buttons = [LANG_CANCEL, LANG_RANDOM, LANG_MORE];
     
     integer i;
     
@@ -173,7 +225,7 @@ open_category_dialog()
 
 open_total_questions_dialog()
 {
-    string total_questions_text = "How many questions?";
+    string total_questions_text = LANG_TOTAL_QUESTIONS;
     list total_questions_buttons;
     
     /* If no payment was made, create a standard set of question numbers. */
@@ -210,7 +262,7 @@ open_total_questions_dialog()
                 if (possible_total_questions <= max_questions)
                 {
                     integer possible_payout = amount_paid / possible_total_questions;
-                    total_questions_text += "\n" + (string) possible_total_questions + " = L$" + (string) possible_payout + " per question";
+                    total_questions_text += "\n" + (string) possible_total_questions + " = L$" + (string) possible_payout + " " + LANG_PER_QUESTION;
                     total_questions_buttons += (string) possible_total_questions;
                     ++buttons;
                 }
@@ -219,21 +271,19 @@ open_total_questions_dialog()
     }
     
     /* Display the possible numbers of questions in a dialog and let the quiz starter choose */
-    llDialog(quiz_starter, total_questions_text, ["CANCEL"] + total_questions_buttons, dialog_channel);
+    llDialog(quiz_starter, total_questions_text, [LANG_CANCEL] + total_questions_buttons, dialog_channel);
 }
 
 open_payout_dialog()
 {
-    llDialog(quiz_starter, "How much is each question worth?", ["CANCEL", "0", "10", "20", "50", "100", "200", "500", "1000", "2000", "5000", "prize"], dialog_channel);
+    llDialog(quiz_starter, LANG_QUESTION_WORTH, [LANG_CANCEL, "0", "10", "20", "50", "100", "200", "500", "1000", "2000", "5000", LANG_PRIZE], dialog_channel);
 }
 
 /* In the default state, request the necessary permissions from the owner */
 default
 {
     state_entry()
-    {
-        llOwnerSay("Free memory: " + (string) llGetFreeMemory());
-        
+    {        
         llSetText("Setting up... (touch to set permissions)", text_color, 1);
         
         /* Get a unique channel number based on the object's key. */
@@ -269,7 +319,7 @@ default
             if (llGetInventoryType(config_notecard_name) == INVENTORY_NOTECARD)
             {
                 llSetText("Reading configuration...", text_color, 1);
-                notecard_query = llGetNotecardLine(config_notecard_name, notecard_line = 0);
+                notecard_query = llGetNotecardLine(notecard_name = config_notecard_name, notecard_line = 0);
             }
             else
             {
@@ -287,7 +337,24 @@ default
         
         if (data == EOF)
         {
-            state ready;
+            if (notecard_name == config_notecard_name)
+            {
+                if (llGetInventoryType("lang_" + language) == INVENTORY_NOTECARD)
+                {
+                    notecard_query = llGetNotecardLine(notecard_name = "lang_" + language, notecard_line = 0);
+                    language = "";
+                }
+                else
+                {
+                    llOwnerSay("No notecard named lang_" + language + " found! Please add one or change the language setting in the config, then reset the script.");
+                }
+                return;
+            }
+            else
+            {
+                notecard_name = "";
+                state ready;
+            }
         }
         
         if (data != "" && llGetSubString(data, 0, 0) != "#")
@@ -339,10 +406,64 @@ default
                 {
                     opentdb_enabled = (integer) value;
                 }
+                else if (name == "language")
+                {
+                    language = value;
+                }
+                /* Localized message strings */
+                else if (name == "LANG_CHOOSE_CATEGORY") LANG_CHOOSE_CATEGORY = value;
+                else if (name == "LANG_CANCEL") LANG_CANCEL = value;
+                else if (name == "LANG_RANDOM") LANG_RANDOM = value;
+                else if (name == "LANG_MORE") LANG_MORE = value;
+                else if (name == "LANG_TOTAL_QUESTIONS") LANG_TOTAL_QUESTIONS = value;
+                else if (name == "LANG_PER_QUESTION") LANG_PER_QUESTION = value;
+                else if (name == "LANG_QUESTION_WORTH") LANG_QUESTION_WORTH = value;
+                else if (name == "LANG_PRIZE") LANG_PRIZE = value;
+                else if (name == "LANG_PAY_TO_PLAY") LANG_PAY_TO_PLAY = value;
+                else if (name == "LANG_FREE_PLAY") LANG_FREE_PLAY = value;
+                else if (name == "LANG_RESTRICTED") LANG_RESTRICTED = value;
+                else if (name == "LANG_STARTING_QUIZ") LANG_STARTING_QUIZ = value;
+                else if (name == "LANG_CLOSE_DIALOG") LANG_CLOSE_DIALOG = value;
+                else if (name == "LANG_CHOOSE_DIFFICULTY") LANG_CHOOSE_DIFFICULTY = value;
+                else if (name == "LANG_NOT_ENOUGH_QUESTIONS") LANG_NOT_ENOUGH_QUESTIONS = value;
+                else if (name == "LANG_PAYOUT_TOO_SMALL") LANG_PAYOUT_TOO_SMALL = value;
+                else if (name == "LANG_NO_TRANSFER") LANG_NO_TRANSFER = value;
+                else if (name == "LANG_TOO_FEW_PRIZES") LANG_TOO_FEW_PRIZES = value;
+                else if (name == "LANG_QUIZ_START_1") LANG_QUIZ_START_1 = value;
+                else if (name == "LANG_QUIZ_START_2") LANG_QUIZ_START_2 = value;
+                else if (name == "LANG_QUIZ_START_3") LANG_QUIZ_START_3 = value;
+                else if (name == "LANG_QUIZ_START_4") LANG_QUIZ_START_4 = value;
+                else if (name == "LANG_PAYOUT_PRIZE") LANG_PAYOUT_PRIZE = value;
+                else if (name == "LANG_PAYOUT_LINDENS") LANG_PAYOUT_LINDENS = value;
+                else if (name == "LANG_RESTRICTED_TO_QUIZ_RUNNER") LANG_RESTRICTED_TO_QUIZ_RUNNER = value;
+                else if (name == "LANG_CANCEL_QUIZ") LANG_CANCEL_QUIZ = value;
+                else if (name == "LANG_YES") LANG_YES = value;
+                else if (name == "LANG_NO") LANG_NO = value;
+                else if (name == "LANG_FETCHING") LANG_FETCHING = value;
+                else if (name == "LANG_FETCHING_ERROR") LANG_FETCHING_ERROR = value;
+                else if (name == "LANG_FIRST_QUESTION") LANG_FIRST_QUESTION = value;
+                else if (name == "LANG_NEXT_QUESTION") LANG_NEXT_QUESTION = value;
+                else if (name == "LANG_LAST_QUESTION") LANG_LAST_QUESTION = value;
+                else if (name == "LANG_ALREADY_GUESSED") LANG_ALREADY_GUESSED = value;
+                else if (name == "LANG_CORRECT_ANSWER") LANG_CORRECT_ANSWER = value;
+                else if (name == "LANG_INCORRECT_ANSWER_1") LANG_INCORRECT_ANSWER_1 = value;
+                else if (name == "LANG_INCORRECT_ANSWER_2") LANG_INCORRECT_ANSWER_2 = value;
+                else if (name == "LANG_TIMES_UP") LANG_TIMES_UP = value;
+                else if (name == "LANG_END_QUIZ") LANG_END_QUIZ = value;
+                else if (name == "LANG_SCORES") LANG_SCORES = value;
+                else if (name == "LANG_QUIZ_CANCELLED") LANG_QUIZ_CANCELLED = value;
+                else if (name == "LANG_REFUND_1") LANG_REFUND_1 = value;
+                else if (name == "LANG_REFUND_2") LANG_REFUND_2 = value;
+                else if (name == "LANG_FETCH_CATEGORIES_ERROR") LANG_FETCH_CATEGORIES_ERROR = value;
             }
         }
         
-        notecard_query = llGetNotecardLine(config_notecard_name, ++notecard_line);
+        notecard_query = llGetNotecardLine(notecard_name, ++notecard_line);
+    }
+    
+    state_exit()
+    {
+        llOwnerSay("Ready!\nFree memory: " + (string) llGetFreeMemory());
     }
 }
 
@@ -389,11 +510,11 @@ state ready
         }
         else if (play_mode == 1)
         {
-            llSetText("Pay me to start a quiz!", text_color, 1);
+            llSetText(LANG_PAY_TO_PLAY, text_color, 1);
         }
         else
         {
-            llSetText("Touch or pay me to start a quiz!", text_color, 1);
+            llSetText(LANG_FREE_PLAY, text_color, 1);
         }
     }
     
@@ -413,7 +534,7 @@ state ready
         }
         else
         {
-            llRegionSayTo(toucher, 0, "Sorry, that is restricted to the owner or group.");
+            llRegionSayTo(toucher, 0, LANG_RESTRICTED);
         }
     }
     
@@ -422,7 +543,7 @@ state ready
     {
         if (require_group && !llSameGroup(id))
         {
-            llRegionSayTo(id, 0, "Sorry, that is restricted to the owner or group.");
+            llRegionSayTo(id, 0, LANG_RESTRICTED);
             llGiveMoney(id, amount);
         }
         else
@@ -451,8 +572,8 @@ state setup
         llSetClickAction(CLICK_ACTION_NONE);
         llListen(dialog_channel, "", quiz_starter, "");
 
-        announce(llGetDisplayName(quiz_starter) + " is starting a quiz...");
-        llRegionSayTo(quiz_starter, 0, "If you close out of a dialog during setup, touch the quiz machine again to re-open it.");
+        announce(llGetDisplayName(quiz_starter) + " " + LANG_STARTING_QUIZ);
+        llRegionSayTo(quiz_starter, 0, LANG_CLOSE_DIALOG);
         
         setup_step = 0;
         
@@ -482,7 +603,7 @@ state setup
         }
         else if (setup_step == 2)
         {
-            llDialog(quiz_starter, "Choose a difficulty:", ["easy", "medium", "hard", "random", "CANCEL"], dialog_channel);
+            llDialog(quiz_starter, LANG_CHOOSE_DIFFICULTY, ["easy", "medium", "hard", LANG_RANDOM, LANG_CANCEL], dialog_channel);
         }
         else if (setup_step == 3)
         {
@@ -499,7 +620,7 @@ state setup
         
         if (llGetListLength(categories) < 1)
         {
-            llSay(0, "An error occurred fetching the categories.");
+            llSay(0, LANG_FETCH_CATEGORIES_ERROR);
             state cancel_quiz;
         }
         
@@ -508,14 +629,14 @@ state setup
     
     listen(integer channel, string name, key id, string message)
     {
-        if (message == "CANCEL")
+        if (message == LANG_CANCEL)
         {
             state cancel_quiz;
         }
         
         if (setup_step == 0)
         {
-            if (message == "MORE")
+            if (message == LANG_MORE)
             {
                 categories_index += 9;
                 
@@ -553,7 +674,7 @@ state setup
     
             if (llGetInventoryType(category) == INVENTORY_NOTECARD && total_questions > notecard_lines)
             {
-                llRegionSayTo(quiz_starter, 0, "The notecard for the chosen category does not contain enough questions.");
+                llRegionSayTo(quiz_starter, 0, LANG_NOT_ENOUGH_QUESTIONS);
                 state cancel_quiz;
             }
                     
@@ -563,7 +684,7 @@ state setup
                 
                 if (payout < 1)
                 {
-                    llRegionSayTo(quiz_starter, 0, "The payout is too small for each question.");
+                    llRegionSayTo(quiz_starter, 0, LANG_PAYOUT_TOO_SMALL);
                     
                     state cancel_quiz;
                 }
@@ -592,7 +713,7 @@ state setup
             else
             {
                 setup_step = 2;
-                llDialog(quiz_starter, "Choose a difficulty:", ["easy", "medium", "hard", "random", "CANCEL"], dialog_channel);
+                llDialog(quiz_starter, LANG_CHOOSE_DIFFICULTY, ["easy", "medium", "hard", LANG_RANDOM, LANG_CANCEL], dialog_channel);
                 llSetTimerEvent(setup_timeout);
             }
         }
@@ -620,7 +741,7 @@ state setup
         }
         else if (setup_step == 3)
         {
-            if (message == "prize")
+            if (message == LANG_PRIZE)
             {    
                 integer objects = llGetInventoryNumber(INVENTORY_OBJECT);
                 integer prizes;
@@ -644,13 +765,13 @@ state setup
                     }
                     else
                     {
-                        llRegionSayTo(quiz_starter, 0, name + " is not transfer and cannot be used as a prize.");
+                        llRegionSayTo(quiz_starter, 0, name + " " + LANG_NO_TRANSFER);
                     }
                 }
                 
                 if (prizes < total_questions)
                 {
-                    llRegionSayTo(quiz_starter, 0, "There are too few prizes for the total questions. Please add more and try again.");
+                    llRegionSayTo(quiz_starter, 0, LANG_TOO_FEW_PRIZES);
                     state cancel_quiz;
                 }
                 
@@ -719,7 +840,7 @@ state begin_quiz
                 
             if (refund > 0)
             {
-                llRegionSayTo(quiz_starter, 0, "You will be refunded the leftover L$" + (string) refund + " that you paid.");
+                llRegionSayTo(quiz_starter, 0, LANG_REFUND_1 + (string) refund + " " + LANG_REFUND_2);
                 llGiveMoney(quiz_starter, refund);
                 amount_paid -= refund;
             }
@@ -727,17 +848,17 @@ state begin_quiz
                 
         question_number = 1;
                 
-        string text = "A quiz of " + (string) total_questions + " questions has started!\n\nTo play, say the letter corresponding to the correct answer in nearby chat.\n\nEach person may only answer once per question!";
+        string text = LANG_QUIZ_START_1 + " " + (string) total_questions + " " + LANG_QUIZ_START_2 + "\n\n" + LANG_QUIZ_START_3 + "\n\n" + LANG_QUIZ_START_4;
         
         /* If payout is set to a prize... */
         if (payout == -1)
         {
-            text += "\n\nEach question is worth a mystery prize!";
+            text += "\n\n" + LANG_PAYOUT_PRIZE;
         }
         /* If payout is an amount of money... */
         else if (payout > 0)
         {
-            text += "\n\nEach question is worth L$" + (string) payout + "!";
+            text += "\n\n" + LANG_PAYOUT_LINDENS + (string) payout + "!";
         }
         
         llPlaySound("begin", 1);
@@ -753,20 +874,20 @@ state begin_quiz
         
         if (toucher != quiz_starter && toucher != llGetOwner())
         {
-            llRegionSayTo(toucher, 0, "Sorry, that is restricted to the quiz runner.");
+            llRegionSayTo(toucher, 0, LANG_RESTRICTED_TO_QUIZ_RUNNER);
             return;
         }
         
         llListenRemove(listener);
         listener = llListen(dialog_channel, "", toucher, "");
-        llDialog(toucher, "Cancel the quiz?", ["YES", "NO"], dialog_channel);
+        llDialog(toucher, LANG_CANCEL_QUIZ, [LANG_YES, LANG_NO], dialog_channel);
     }
     
     listen(integer channel, string name, key id, string message)
     {
         llListenRemove(listener);
         
-        if (message == "YES")
+        if (message == LANG_YES)
         {
             state cancel_quiz;
         }
@@ -801,7 +922,7 @@ state ask_question
 {
     state_entry()
     {
-        llSetText("Fetching question...", text_color, 1);
+        llSetText(LANG_FETCHING, text_color, 1);
 
         if (llGetInventoryType(category) == INVENTORY_NOTECARD)
         {
@@ -811,12 +932,12 @@ state ask_question
         {
             string url = opentdb_api + "?encode=" + opentdb_api_encoding + "&amount=1";
             
-            if (category != "random")
+            if (category != LANG_RANDOM)
             {
                 url += "&category=" + category;
             }
             
-            if (difficulty != "random")
+            if (difficulty != LANG_RANDOM)
             {
                 url += "&difficulty=" + difficulty;
             }
@@ -832,21 +953,21 @@ state ask_question
         
         if (question_data == JSON_INVALID)
         {
-            llSay(0, "An error occurred while fetching the question.");
+            llSay(0, LANG_FETCHING_ERROR);
             state cancel_quiz;
         }
         
         if (question_number == 1)
         {
-            announce("Here comes the first question...");
+            announce(LANG_FIRST_QUESTION);
         }
         else if (question_number == total_questions)
         {
-            announce("Here comes the last question...");
+            announce(LANG_LAST_QUESTION);
         }
         else
         {
-            announce("Here comes the next question...");
+            announce(LANG_NEXT_QUESTION);
         }
                         
         llSetTimerEvent(question_delay);
@@ -865,7 +986,7 @@ state ask_question
 
         if (num_fields < 3)
         {
-            llSay(0, "An error occurred while fetching the question.");
+            llSay(0, LANG_FETCHING_ERROR);
             state cancel_quiz;
         }
 
@@ -885,15 +1006,15 @@ state ask_question
         
         if (question_number == 1)
         {
-            announce("Here comes the first question...");
+            announce(LANG_FIRST_QUESTION);
         }
         else if (question_number == total_questions)
         {
-            announce("Here comes the last question...");
+            announce(LANG_LAST_QUESTION);
         }
         else
         {
-            announce("Here comes the next question...");
+            announce(LANG_NEXT_QUESTION);
         }
                         
         llSetTimerEvent(question_delay);
@@ -905,20 +1026,20 @@ state ask_question
         
         if (toucher != quiz_starter && toucher != llGetOwner())
         {
-            llRegionSayTo(toucher, 0, "Sorry, that is restricted to the quiz runner.");
+            llRegionSayTo(toucher, 0, LANG_RESTRICTED_TO_QUIZ_RUNNER);
             return;
         }
         
         llListenRemove(listener);
         listener = llListen(dialog_channel, "", toucher, "");
-        llDialog(toucher, "Cancel the quiz?", ["YES", "NO"], dialog_channel);
+        llDialog(toucher, LANG_CANCEL_QUIZ, [LANG_YES, LANG_NO], dialog_channel);
     }
     
     listen(integer channel, string name, key id, string message)
     {
         llListenRemove(listener);
         
-        if (message == "YES")
+        if (message == LANG_YES)
         {
             state cancel_quiz;
         }
@@ -990,13 +1111,13 @@ state wait_for_answer
         
         if (toucher != quiz_starter && toucher != llGetOwner())
         {
-            llRegionSayTo(toucher, 0, "Sorry, that is restricted to the quiz runner.");
+            llRegionSayTo(toucher, 0, LANG_RESTRICTED_TO_QUIZ_RUNNER);
             return;
         }
         
         llListenRemove(listener);
         listener = llListen(dialog_channel, "", toucher, "");
-        llDialog(toucher, "Cancel the quiz?", ["YES", "NO"], dialog_channel);
+        llDialog(toucher, LANG_CANCEL_QUIZ, [LANG_YES, LANG_NO], dialog_channel);
     }
     
     listen(integer channel, string name, key id, string message)
@@ -1005,7 +1126,7 @@ state wait_for_answer
         {
             llListenRemove(listener);
             
-            if (message == "YES")
+            if (message == LANG_YES)
             {
                 state cancel_quiz;
             }
@@ -1017,13 +1138,13 @@ state wait_for_answer
             
         if (require_group && !llSameGroup(id))
         {
-            llRegionSayTo(id, 0, "Sorry, that is restricted to the owner or group.");
+            llRegionSayTo(id, 0, LANG_RESTRICTED);
             return;
         }
         
         if (llListFindList(incorrect_guessers, [id]) != -1)
         {
-            llRegionSayTo(id, 0, "Sorry, you already guessed incorrectly and must wait until the next question!");
+            llRegionSayTo(id, 0, LANG_ALREADY_GUESSED);
             return;
         }
         
@@ -1031,7 +1152,7 @@ state wait_for_answer
         {
             llPlaySound("ding", 1);
             
-            llSay(0, correct_answer + " was the correct answer!");
+            llSay(0, correct_answer + " " + LANG_CORRECT_ANSWER);
             
             /* If payout is prizes... */
             if (payout == -1)
@@ -1074,7 +1195,7 @@ state wait_for_answer
         else
         {
             incorrect_guessers += id;
-            llRegionSayTo(id, 0, "Sorry, " + llToUpper(message) + " is not correct. Please try again on the next question!");
+            llRegionSayTo(id, 0, LANG_INCORRECT_ANSWER_1 + ", " + llToUpper(message) + " " + LANG_INCORRECT_ANSWER_2);
         }
     }
     
@@ -1082,7 +1203,7 @@ state wait_for_answer
     {
         llSetTimerEvent(0);
                 
-        llSay(0, "Time's up! " + correct_answer + " was the correct answer!");
+        llSay(0, LANG_TIMES_UP + " " + correct_answer + " " + LANG_CORRECT_ANSWER);
         
         if (payout > 0)
         {
@@ -1128,13 +1249,13 @@ state end_quiz
     {
         llPlaySound("end", 1);
         
-        string text = "That's the end of the quiz, thanks for playing!";
+        string text = LANG_END_QUIZ;
         
         integer scores_len = llGetListLength(scores);
         
         if (scores_len > 0)
         {
-            text += "\n\nScores:";
+            text += "\n\n" + LANG_SCORES + ":";
             
             integer i;
             
@@ -1193,11 +1314,11 @@ state cancel_quiz
     {
         llPlaySound("cancel", 1);
         
-        announce("The quiz was cancelled!");
+        announce(LANG_QUIZ_CANCELLED);
         
         if (amount_paid > 0)
         {
-            llRegionSayTo(quiz_starter, 0, "You will be refunded the leftover L$" + (string) amount_paid + " that you paid.");
+            llRegionSayTo(quiz_starter, 0, LANG_REFUND_1 + (string) amount_paid + " " + LANG_REFUND_2);
             llGiveMoney(quiz_starter, amount_paid);
         }
         
