@@ -69,9 +69,6 @@ string LANG_RESTRICTED;
 string LANG_STARTING_QUIZ;
 string LANG_CLOSE_DIALOG;
 string LANG_CHOOSE_DIFFICULTY;
-string LANG_EASY;
-string LANG_MEDIUM;
-string LANG_HARD;
 string LANG_NOT_ENOUGH_QUESTIONS;
 string LANG_PAYOUT_TOO_SMALL;
 string LANG_NO_TRANSFER;
@@ -428,9 +425,6 @@ default
                 else if (name == "LANG_STARTING_QUIZ") LANG_STARTING_QUIZ = value;
                 else if (name == "LANG_CLOSE_DIALOG") LANG_CLOSE_DIALOG = value;
                 else if (name == "LANG_CHOOSE_DIFFICULTY") LANG_CHOOSE_DIFFICULTY = value;
-                else if (name == "LANG_EASY") LANG_EASY = value;
-                else if (name == "LANG_MEDIUM") LANG_MEDIUM = value;
-                else if (name == "LANG_HARD") LANG_HARD = value;
                 else if (name == "LANG_NOT_ENOUGH_QUESTIONS") LANG_NOT_ENOUGH_QUESTIONS = value;
                 else if (name == "LANG_PAYOUT_TOO_SMALL") LANG_PAYOUT_TOO_SMALL = value;
                 else if (name == "LANG_NO_TRANSFER") LANG_NO_TRANSFER = value;
@@ -609,7 +603,7 @@ state setup
         }
         else if (setup_step == 2)
         {
-            llDialog(quiz_starter, LANG_CHOOSE_DIFFICULTY, [LANG_EASY, LANG_MEDIUM, LANG_HARD, LANG_RANDOM, LANG_CANCEL], dialog_channel);
+            llDialog(quiz_starter, LANG_CHOOSE_DIFFICULTY, ["easy", "medium", "hard", LANG_RANDOM, LANG_CANCEL], dialog_channel);
         }
         else if (setup_step == 3)
         {
@@ -719,7 +713,7 @@ state setup
             else
             {
                 setup_step = 2;
-                llDialog(quiz_starter, LANG_CHOOSE_DIFFICULTY, [LANG_EASY, LANG_MEDIUM, LANG_HARD, LANG_RANDOM, LANG_CANCEL], dialog_channel);
+                llDialog(quiz_starter, LANG_CHOOSE_DIFFICULTY, ["easy", "medium", "hard", LANG_RANDOM, LANG_CANCEL], dialog_channel);
                 llSetTimerEvent(setup_timeout);
             }
         }
@@ -938,12 +932,12 @@ state ask_question
         {
             string url = opentdb_api + "?encode=" + opentdb_api_encoding + "&amount=1";
             
-            if (category != "random")
+            if (category != LANG_RANDOM)
             {
                 url += "&category=" + category;
             }
             
-            if (difficulty != "random")
+            if (difficulty != LANG_RANDOM)
             {
                 url += "&difficulty=" + difficulty;
             }
@@ -1324,7 +1318,7 @@ state cancel_quiz
         
         if (amount_paid > 0)
         {
-            llRegionSayTo(quiz_starter, 0, LANG_REFUND_1 + (string) amount_paid + LANG_REFUND_2);
+            llRegionSayTo(quiz_starter, 0, LANG_REFUND_1 + (string) amount_paid + " " + LANG_REFUND_2);
             llGiveMoney(quiz_starter, amount_paid);
         }
         
