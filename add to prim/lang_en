@@ -1,0 +1,58 @@
+# Open Trivia Database Quiz Machine translation notecard
+# Language: English
+#
+# Copy this notecard and rename it lang_xx to provide a translation for another language!
+#
+# All messages must be written in the form of:
+#     name = translated text
+# The spaces around the = are mandatory.
+#
+# After changing this notecard, reset the script to reload the messages.
+
+LANG_CHOOSE_CATEGORY = Choose a category:
+LANG_CANCEL = CANCEL
+LANG_RANDOM = random
+LANG_MORE = MORE
+LANG_TOTAL_QUESTIONS = How many questions?
+LANG_PER_QUESTION = per question
+LANG_QUESTION_WORTH = How much is each question worth?
+LANG_PRIZE = prize
+LANG_PAY_TO_PLAY = Pay me to start a quiz!
+LANG_FREE_PLAY = Touch or pay me to start a quiz!
+LANG_RESTRICTED = Sorry, that is restricted to the owner or group.
+LANG_STARTING_QUIZ = is starting a quiz...
+LANG_CLOSE_DIALOG = If you close out of a dialog during setup, touch the quiz machine to re-open it.
+LANG_CHOOSE_DIFFICULTY = Choose a difficulty:
+LANG_EASY = easy
+LANG_MEDIUM = medium
+LANG_HARD = hard
+LANG_NOT_ENOUGH_QUESTIONS = The notecard for the chosen category does not contain enough questions.
+LANG_PAYOUT_TOO_SMALL = The payout is too small for each question.
+LANG_NO_TRANSFER = is not transfer and cannot be used as a prize.
+LANG_TOO_FEW_PRIZES = There are too few prizes for the total questions. Please add more and try again.
+LANG_QUIZ_START_1 = A quiz of
+LANG_QUIZ_START_2 = questions has started!
+LANG_QUIZ_START_3 = To play, say the letter corresponding to the correct answer in nearby chat.
+LANG_QUIZ_START_4 = Each person may only answer once per question!
+LANG_PAYOUT_PRIZE = Each question is worth a mystery prize!
+LANG_PAYOUT_LINDENS = Each question is worth L$
+LANG_RESTRICTED_TO_QUIZ_RUNNER = Sorry, that is restricted to the quiz runner.
+LANG_CANCEL_QUIZ = Cancel the quiz?
+LANG_YES = YES
+LANG_NO = NO
+LANG_FETCHING = Fetching question...
+LANG_FETCHING_ERROR = An error occurred while fetching the question.
+LANG_FIRST_QUESTION = Here comes the first question...
+LANG_NEXT_QUESTION = Here comes the next question...
+LANG_LAST_QUESTION = Here comes the last question...
+LANG_ALREADY_GUESSED = Sorry, you already guessed incorrectly and must wait until the next question!
+LANG_CORRECT_ANSWER = was the correct answer!
+LANG_INCORRECT_ANSWER_1 = Sorry
+LANG_INCORRECT_ANSWER_2 = is not correct. Please try again on the next question!
+LANG_TIMES_UP = Time's up!
+LANG_END_QUIZ = That's the end of the quiz, thanks for playing!
+LANG_SCORES = Scores
+LANG_QUIZ_CANCELLED = The quiz was cancelled!
+LANG_REFUND_1 = You will be refunded the leftover L$
+LANG_REFUND_2 = that you paid.
+LANG_FETCH_CATEGORIES_ERROR = An error occurred fetching the categories.
