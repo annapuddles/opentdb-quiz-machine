@@ -41,3 +41,6 @@ max_questions = 50
 
 # The color to use for hover text
 text_color = <1, 1, 1>
+
+# The volume of sounds
+volume = 1.0
