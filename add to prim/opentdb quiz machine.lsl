@@ -52,6 +52,9 @@ integer require_group = FALSE;
 /* Language code used to read the appropriate language notecard. */
 string language = "en";
 
+/* The volume that sounds will be played at. */
+float volume = 1.0;
+
 /** END OF CONFIGURATION **/
 
 /* Message strings read from the selected language notecard. */
@@ -405,6 +408,10 @@ default
                 else if (name == "opentdb_enabled")
                 {
                     opentdb_enabled = (integer) value;
+                }
+                else if (name == "volume")
+                {
+                    volume = (float) value;
                 }
                 else if (name == "language")
                 {
@@ -861,7 +868,7 @@ state begin_quiz
             text += "\n\n" + LANG_PAYOUT_LINDENS + (string) payout + "!";
         }
         
-        llPlaySound("begin", 1);
+        llPlaySound("begin", volume);
         
         announce(text);
                 
@@ -1074,7 +1081,7 @@ state ask_question
             text += "\n  " + letter + ") " + answer;
         }
         
-        llPlaySound("question", 1);
+        llPlaySound("question", volume);
         
         announce(text);
         
@@ -1150,7 +1157,7 @@ state wait_for_answer
         
         if (llToLower(message) == llToLower(correct_answer))
         {
-            llPlaySound("ding", 1);
+            llPlaySound("ding", volume);
             
             llSay(0, correct_answer + " " + LANG_CORRECT_ANSWER);
             
@@ -1216,7 +1223,7 @@ state wait_for_answer
         
         if (question_number <= total_questions)
         {
-            llPlaySound("fail", 1);
+            llPlaySound("fail", volume);
             
             state ask_question;
         }
@@ -1247,7 +1254,7 @@ state end_quiz
 {
     state_entry()
     {
-        llPlaySound("end", 1);
+        llPlaySound("end", volume);
         
         string text = LANG_END_QUIZ;
         
@@ -1312,7 +1319,7 @@ state cancel_quiz
 {
     state_entry()
     {
-        llPlaySound("cancel", 1);
+        llPlaySound("cancel", volume);
         
         announce(LANG_QUIZ_CANCELLED);
         
