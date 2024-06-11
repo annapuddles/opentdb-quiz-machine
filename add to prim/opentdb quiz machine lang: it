@@ -1,7 +1,7 @@
 # Open Trivia Database Quiz Machine translation notecard
 # Language: Italian (translation by KATIE08TS)
 #
-# Copy this notecard and rename it lang_xx to provide a translation for another language!
+# Copy this notecard and rename it "opentdb quiz machine lang: xx" to provide a translation for another language!
 #
 # All messages must be written in the form of:
 #     name = translated text
