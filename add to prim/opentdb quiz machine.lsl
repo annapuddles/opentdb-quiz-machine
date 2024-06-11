@@ -1,4 +1,4 @@
-/* Open Trivia Database Quiz Machine v3.3.0 */
+/* Open Trivia Database Quiz Machine v4.0.0 */
 
 /** CONFIGURATION **/
 
@@ -48,6 +48,9 @@ vector text_color = <1, 1, 1>;
 
 /* Whether a group is required to participate in quizzes. */
 integer require_group = FALSE;
+
+/* The prefix for language notecards. */
+string language_notecard_prefix = "opentdb quiz machine lang: ";
 
 /* Language code used to read the appropriate language notecard. */
 string language = "en";
@@ -189,7 +192,7 @@ complete_category_setup()
         for (i = 0; i < num_notecards; ++i)
         {
             string name = llGetInventoryName(INVENTORY_NOTECARD, i);
-            if (name != config_notecard_name && llGetSubString(name, 0, 4) != "lang_")
+            if (name != config_notecard_name && llGetSubString(name, 0, llStringLength(language_notecard_prefix) - 1) != language_notecard_prefix)
             {
                 notecard_categories += llList2Json(JSON_OBJECT, ["id", name, "name", name]);
             }
@@ -342,14 +345,14 @@ default
         {
             if (notecard_name == config_notecard_name)
             {
-                if (llGetInventoryType("lang_" + language) == INVENTORY_NOTECARD)
+                if (llGetInventoryType(language_notecard_prefix + language) == INVENTORY_NOTECARD)
                 {
-                    notecard_query = llGetNotecardLine(notecard_name = "lang_" + language, notecard_line = 0);
+                    notecard_query = llGetNotecardLine(notecard_name = language_notecard_prefix + language, notecard_line = 0);
                     language = "";
                 }
                 else
                 {
-                    llOwnerSay("No notecard named lang_" + language + " found! Please add one or change the language setting in the config, then reset the script.");
+                    llOwnerSay("No notecard named \"" + language_notecard_prefix + language + "\" found! Please add one or change the language setting in the config, then reset the script.");
                 }
                 return;
             }
