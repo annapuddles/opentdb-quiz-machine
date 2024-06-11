@@ -6,7 +6,7 @@
 #
 # After changing this notecard, reset the script to load the new configuration settings.
 
-# The language to use for dialogs and messages. There must be a corresponding notecard in the inventory with the prefix "lang_". For example, if language = en, there must be a "lang_en" notecard present in the inventory.
+# The language to use for dialogs and messages. There must be a corresponding notecard in the inventory with the prefix "opentdb quiz machine lang: ". For example, if language = en, there must be a "opentdb quiz machine lang: en" notecard present in the inventory.
 language = en
 
 # The play mode of the machine:
