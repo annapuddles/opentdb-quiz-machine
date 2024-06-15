@@ -1,4 +1,4 @@
-/* Open Trivia Database Quiz Machine v4.0.0 */
+/* Open Trivia Database Quiz Machine v4.1.0 */
 
 /** CONFIGURATION **/
 
