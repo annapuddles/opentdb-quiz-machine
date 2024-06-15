@@ -1,0 +1,55 @@
+# Open Trivia Database Quiz Machine translation notecard
+# Language: German (translation by DeniseLaetitia)
+#
+# Copy this notecard and rename it "opentdb quiz machine lang: xx" to provide a translation for another language!
+#
+# All messages must be written in the form of:
+#     name = translated text
+# The spaces around the = are mandatory.
+#
+# After changing this notecard, reset the script to reload the messages.
+
+LANG_CHOOSE_CATEGORY = Wähle eine Kategorie:
+LANG_CANCEL = Abbrechen
+LANG_RANDOM = Zufällig
+LANG_MORE = Weiter
+LANG_TOTAL_QUESTIONS = Wie Viele Fragen?
+LANG_PER_QUESTION = pro Frage
+LANG_QUESTION_WORTH = Wieviel L$ ist jede Frage wert?
+LANG_PRIZE = Preis
+LANG_PAY_TO_PLAY = Bitte bezahle mich, um das Quiz zu starten!
+LANG_FREE_PLAY = Klicke oder bezahle mich, um das Quiz zu starten!
+LANG_RESTRICTED = Sorry, das ist auf den Beitzer oder der Gruppe beschränkt.
+LANG_STARTING_QUIZ = startet das Quiz ...
+LANG_CLOSE_DIALOG = Falls du diesen Dialog während des Setup schliesst, klicke auf die Quiz-Maschine um es neu zu öffnen.
+LANG_CHOOSE_DIFFICULTY = Wähle einen Schwierigkeitsgrad
+LANG_NOT_ENOUGH_QUESTIONS = Die ausgewählte Notizkarte enthält zu wenig Fragen. 
+LANG_PAYOUT_TOO_SMALL = Die Auszahlung pro Frage ist zu niedrig.
+LANG_NO_TRANSFER = ist nich transferierbar und Kann nicht als Preis gewählt werdfen.
+LANG_TOO_FEW_PRIZES = Es sind zu wenig Preise für die Menge an Fragen vorhanden. Bitte füge mehr Preise hinzu und versuche es nochmal.
+LANG_QUIZ_START_1 = Ein Quiz über
+LANG_QUIZ_START_2 = Fragen hat begonnen!
+LANG_QUIZ_START_3 = Um mitzuspielen und zu antworten schreibe den richtigen Buchstaben in den lokalen Chat.
+LANG_QUIZ_START_4 = Jeder Mitspieler darf nur einmal pro Frage antworten! 
+LANG_PAYOUT_PRIZE = Jede richtige Antwort wird mit einem geheimnisvollen Preis belohnt!
+LANG_PAYOUT_LINDENS = Für jede richtige Antwort bekommst du L$
+LANG_RESTRICTED_TO_QUIZ_RUNNER = Sorry, das ist auf die Quiz startende Person beschränkt.
+LANG_CANCEL_QUIZ = Quiz abbrechen?
+LANG_YES = JA
+LANG_NO = NEIN
+LANG_FETCHING = Frage wird abgerufen ...
+LANG_FETCHING_ERROR = Bei der Abfrage ist ein Fehler aufgetreten.
+LANG_FIRST_QUESTION = Hier kommt die erste Frage ...
+LANG_NEXT_QUESTION = Hier kommt die nächste Frage ...
+LANG_LAST_QUESTION = Hier kommt die letzte Frage ...
+LANG_ALREADY_GUESSED = Sorry, du hast bereits falsch geantwortet. Bitte warte auf die nächste Frage!
+LANG_CORRECT_ANSWER = war die richtige Antwort!
+LANG_INCORRECT_ANSWER_1 = Sorry
+LANG_INCORRECT_ANSWER_2 = war falsch. Bitte versuche es bei der nächsten Frage noch einmal!
+LANG_TIMES_UP = Die Zeit is abgelaufen!
+LANG_END_QUIZ = Das Quiz ist vorbei, danke für's mitspielen!
+LANG_SCORES = Scores
+LANG_QUIZ_CANCELLED = Das Quiz wurde abgebrochen!
+LANG_REFUND_1 = Die verbliebenden L$ werden dir wieder gutgeschrieben. 
+LANG_REFUND_2 = L$ wurden dir ausgezahlt.
+LANG_FETCH_CATEGORIES_ERROR = Bei der Abfrage der Kategorien ist ein Fehler aufgetreten.
